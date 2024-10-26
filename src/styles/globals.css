@@ -1,0 +1,32 @@
+/* Add these styles */
+.bookmark-save-btn {
+  background: transparent;
+  border: 1px solid #ddd;
+  padding: 4px 12px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #666;
+  transition: all 0.2s;
+  height: 32px;
+  margin-right: 8px;
+  font-size: 14px;
+}
+
+.bookmark-save-btn:hover {
+  background: #f5f5f5;
+  color: #333;
+  border-color: #ccc;
+}
+
+.bookmark-save-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.video-controls-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
