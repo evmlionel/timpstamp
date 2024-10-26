@@ -2,11 +2,36 @@ document.addEventListener('DOMContentLoaded', () => {
   const bookmarksList = document.getElementById('bookmarksList')
   const deleteAllBtn = document.getElementById('deleteAllBtn')
 
+  // Add settings section to HTML
+  const settingsDiv = document.createElement('div')
+  settingsDiv.className = 'settings'
+  settingsDiv.innerHTML = `
+    <div class="settings-item">
+      <label class="toggle-label">
+        <input type="checkbox" id="shortcutToggle">
+        Enable keyboard shortcut (B)
+      </label>
+    </div>
+  `
+
+  document.querySelector('.header').appendChild(settingsDiv)
+
+  // Load shortcut setting
+  const shortcutToggle = document.getElementById('shortcutToggle')
+  chrome.storage.local.get(['shortcutEnabled'], (result) => {
+    shortcutToggle.checked = result.shortcutEnabled !== false // Default to true
+  })
+
+  // Save shortcut setting
+  shortcutToggle.addEventListener('change', (e) => {
+    chrome.storage.local.set({ shortcutEnabled: e.target.checked })
+  })
+
   function updateBookmarksList(bookmarks) {
     if (bookmarks.length === 0) {
       bookmarksList.innerHTML = `
         <div class="empty-state">
-          No bookmarks yet! Click the 🔖 button while watching a video to save timestamps.
+          No bookmarks yet! Click the bookmark button while watching a video to save timestamps.
         </div>
       `
       deleteAllBtn.disabled = true
@@ -29,7 +54,11 @@ document.addEventListener('DOMContentLoaded', () => {
           </a>
           <div class="timestamp">${formatTime(bookmark.timestamp)}</div>
         </div>
-        <button class="delete-btn" data-index="${index}">×</button>
+        <button class="delete-btn" data-index="${index}">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
+          </svg>
+        </button>
       `
 
       bookmarksList.appendChild(div)

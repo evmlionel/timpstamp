@@ -121,6 +121,22 @@ observer.observe(document.body, {
 // Initial check
 initializeExtension()
 
+// Listen for keyboard shortcuts
+document.addEventListener('keydown', (e) => {
+  // Only trigger if typing in an input/textarea
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
+
+  if (e.key.toLowerCase() === 'b') {
+    chrome.storage.local.get(['shortcutEnabled'], (result) => {
+      if (result.shortcutEnabled !== false) {
+        // Default to enabled
+        saveTimestamp()
+        showSaveConfirmation()
+      }
+    })
+  }
+})
+
 function saveTimestamp() {
   const video = document.querySelector('video')
   const timestamp = Math.floor(video.currentTime)
