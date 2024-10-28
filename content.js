@@ -22,58 +22,130 @@ function showSaveConfirmation() {
   notification.textContent = '✓ Timestamp saved'
   document.body.appendChild(notification)
 
-  // Remove after animation
   setTimeout(() => {
-    document.body.removeChild(notification)
+    if (notification.parentNode) {
+      notification.parentNode.removeChild(notification)
+    }
   }, 2000)
+}
+
+// Function to show notification
+function showNotification(message, type = 'success') {
+  const notification = document.createElement('div')
+  notification.style.cssText = `
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: ${
+      type === 'success' ? 'rgba(22, 163, 74, 0.9)' : 'rgba(220, 38, 38, 0.9)'
+    };
+    color: white;
+    padding: 8px 16px;
+    border-radius: 4px;
+    z-index: 9999;
+    font-family: Roboto, Arial, sans-serif;
+    font-size: 14px;
+    pointer-events: none;
+    animation: fadeInOut 2s ease-in-out;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  `
+
+  notification.innerHTML = `
+    ${type === 'success' ? '✓' : '✕'} ${message}
+  `
+
+  document.body.appendChild(notification)
+
+  setTimeout(() => {
+    if (notification.parentNode) {
+      notification.parentNode.removeChild(notification)
+    }
+  }, 2000)
+}
+
+// Function to save timestamp
+function saveTimestamp() {
+  const video = document.querySelector('video')
+  if (!video) return
+
+  const videoId = window.location.href.match(/[?&]v=([^&]+)/)?.[1]
+  const videoTitle = document.querySelector('.ytp-title-link')?.textContent
+
+  if (!videoId || !videoTitle) {
+    showNotification('Could not save bookmark', 'error')
+    return
+  }
+
+  const timestamp = Math.floor(video.currentTime)
+  const url = `${window.location.href}&t=${timestamp}s`
+
+  const bookmark = {
+    videoId,
+    videoTitle,
+    timestamp,
+    url,
+    savedAt: Date.now(),
+  }
+
+  chrome.runtime.sendMessage(
+    { type: 'SAVE_BOOKMARK', bookmark },
+    (response) => {
+      if (response?.success) {
+        showNotification('Bookmark saved!')
+      } else {
+        showNotification('Failed to save bookmark', 'error')
+      }
+    }
+  )
 }
 
 // Function to add the bookmark button
 function addBookmarkButton() {
-  // Look for the right controls container
-  const rightControls = document.querySelector('.ytp-right-controls')
-  const existingBtn = document.querySelector('.ytp-bookmark-button')
+  try {
+    const rightControls = document.querySelector('.ytp-right-controls')
+    const existingBtn = document.querySelector('.ytp-bookmark-button')
 
-  if (rightControls && !existingBtn && !buttonAdded) {
-    const bookmarkBtn = document.createElement('button')
-    bookmarkBtn.className = 'ytp-button ytp-bookmark-button'
-    bookmarkBtn.innerHTML = `
-      <svg height="100%" version="1.1" viewBox="0 0 24 24" width="100%">
-        <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="currentColor"/>
-      </svg>
-    `
-    bookmarkBtn.title = 'Save timestamp (B)'
+    if (rightControls && !existingBtn && !buttonAdded) {
+      const bookmarkBtn = document.createElement('button')
+      bookmarkBtn.className = 'ytp-button ytp-bookmark-button'
+      bookmarkBtn.innerHTML = `
+        <svg height="100%" version="1.1" viewBox="0 0 24 24" width="100%">
+          <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="currentColor"/>
+        </svg>
+      `
+      bookmarkBtn.title = 'Save timestamp (B)'
+      bookmarkBtn.style.cssText = `
+        opacity: 0.9;
+        width: 48px;
+        height: 100%;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        padding: 0 8px;
+      `
 
-    // Match YouTube's native button styling
-    bookmarkBtn.style.cssText = `
-      opacity: 0.9;
-      width: 48px;
-      height: 100%;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      padding: 0 8px;
-    `
+      bookmarkBtn.onmouseover = () => (bookmarkBtn.style.opacity = '1')
+      bookmarkBtn.onmouseout = () => (bookmarkBtn.style.opacity = '0.9')
+      bookmarkBtn.onclick = () => {
+        saveTimestamp()
+        bookmarkBtn.style.transform = 'scale(1.2)'
+        setTimeout(() => {
+          bookmarkBtn.style.transform = 'scale(1)'
+        }, 200)
+      }
 
-    // Add hover effects
-    bookmarkBtn.onmouseover = () => (bookmarkBtn.style.opacity = '1')
-    bookmarkBtn.onmouseout = () => (bookmarkBtn.style.opacity = '0.9')
-    bookmarkBtn.onclick = () => {
-      saveTimestamp()
-      showSaveConfirmation()
-
-      // Add click animation
-      bookmarkBtn.style.transform = 'scale(1.2)'
-      setTimeout(() => {
-        bookmarkBtn.style.transform = 'scale(1)'
-      }, 200)
+      const settingsBtn = rightControls.querySelector('.ytp-settings-button')
+      if (settingsBtn) {
+        rightControls.insertBefore(bookmarkBtn, settingsBtn)
+        buttonAdded = true
+      }
     }
-
-    // Insert before the settings button
-    const settingsBtn = rightControls.querySelector('.ytp-settings-button')
-    rightControls.insertBefore(bookmarkBtn, settingsBtn)
-    buttonAdded = true
+  } catch (error) {
+    console.log('Error in addBookmarkButton:', error)
   }
 }
 
@@ -89,20 +161,24 @@ style.textContent = `
 `
 document.head.appendChild(style)
 
-// Watch for player initialization
-const initializeExtension = () => {
-  if (document.querySelector('.ytp-right-controls')) {
-    addBookmarkButton()
+// Initialize extension
+function initializeExtension() {
+  try {
+    if (document.querySelector('.ytp-right-controls')) {
+      addBookmarkButton()
+    }
+  } catch (error) {
+    console.log('Error in initializeExtension:', error)
   }
 }
 
-// Reset on navigation
-const resetButton = () => {
+// Reset button state
+function resetButton() {
   buttonAdded = false
   initializeExtension()
 }
 
-// Event listeners for page changes
+// Event listeners
 document.addEventListener('yt-navigate-finish', resetButton)
 window.addEventListener('load', initializeExtension)
 
@@ -118,65 +194,26 @@ observer.observe(document.body, {
   subtree: true,
 })
 
-// Initial check
-initializeExtension()
-
-// Listen for keyboard shortcuts
+// Keyboard shortcut listener
 document.addEventListener('keydown', (e) => {
-  // Only trigger if typing in an input/textarea
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
 
   if (e.key.toLowerCase() === 'b') {
     chrome.storage.local.get(['shortcutEnabled'], (result) => {
+      if (chrome.runtime.lastError) {
+        console.log(
+          'Error checking shortcut setting:',
+          chrome.runtime.lastError
+        )
+        return
+      }
+
       if (result.shortcutEnabled !== false) {
-        // Default to enabled
         saveTimestamp()
-        showSaveConfirmation()
       }
     })
   }
 })
 
-function saveTimestamp() {
-  const video = document.querySelector('video')
-  const timestamp = Math.floor(video.currentTime)
-  const videoTitle = document.querySelector('#title h1')?.textContent?.trim()
-  const currentUrl = window.location.href.split('&t=')[0]
-  const videoId = new URLSearchParams(window.location.search).get('v')
-
-  const bookmark = {
-    videoId,
-    videoTitle: videoTitle || 'Untitled Video',
-    timestamp,
-    url: `${currentUrl}&t=${timestamp}s`,
-    created: new Date().toISOString(),
-  }
-
-  chrome.storage.local.get(['bookmarks'], (result) => {
-    const bookmarks = result.bookmarks || []
-
-    // Find index of existing bookmark for this video
-    const existingIndex = bookmarks.findIndex((b) => b.videoId === videoId)
-
-    if (existingIndex !== -1) {
-      // Update existing bookmark
-      bookmarks[existingIndex] = bookmark
-    } else {
-      // Add new bookmark
-      bookmarks.push(bookmark)
-    }
-
-    chrome.storage.local.set({ bookmarks }, () => {
-      showSaveConfirmation()
-
-      // Visual feedback on button
-      const btn = document.querySelector('.ytp-bookmark-button')
-      if (btn) {
-        btn.style.transform = 'scale(1.2)'
-        setTimeout(() => {
-          btn.style.transform = 'scale(1)'
-        }, 200)
-      }
-    })
-  })
-}
+// Initial check
+initializeExtension()
