@@ -1,6 +1,8 @@
 document.addEventListener('DOMContentLoaded', () => {
   const bookmarksList = document.getElementById('bookmarksList')
   const deleteAllBtn = document.getElementById('deleteAllBtn')
+  const searchInput = document.getElementById('searchInput')
+  let allBookmarks = [] // Store all bookmarks for filtering
 
   // Add settings section to HTML
   const settingsDiv = document.createElement('div')
@@ -65,16 +67,33 @@ document.addEventListener('DOMContentLoaded', () => {
     })
   }
 
+  function filterBookmarks(searchTerm) {
+    if (!searchTerm) {
+      updateBookmarksList(allBookmarks)
+      return
+    }
+
+    const filtered = allBookmarks.filter((bookmark) =>
+      bookmark.videoTitle.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    updateBookmarksList(filtered)
+  }
+
+  searchInput.addEventListener('input', (e) => {
+    filterBookmarks(e.target.value)
+  })
+
   // Load initial bookmarks
   chrome.storage.local.get(['bookmarks'], (result) => {
-    const bookmarks = result.bookmarks || []
-    updateBookmarksList(bookmarks)
+    allBookmarks = result.bookmarks || []
+    updateBookmarksList(allBookmarks)
   })
 
   // Delete all bookmarks
   deleteAllBtn.addEventListener('click', () => {
     if (confirm('Are you sure you want to delete all bookmarks?')) {
       chrome.storage.local.set({ bookmarks: [] }, () => {
+        allBookmarks = []
         updateBookmarksList([])
       })
     }
@@ -82,13 +101,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Delete individual bookmark
   bookmarksList.addEventListener('click', (e) => {
-    if (e.target.classList.contains('delete-btn')) {
-      const index = parseInt(e.target.dataset.index)
+    if (e.target.closest('.delete-btn')) {
+      const index = parseInt(e.target.closest('.delete-btn').dataset.index)
       chrome.storage.local.get(['bookmarks'], (result) => {
-        const bookmarks = result.bookmarks || []
-        bookmarks.splice(bookmarks.length - 1 - index, 1)
-        chrome.storage.local.set({ bookmarks }, () => {
-          updateBookmarksList(bookmarks)
+        allBookmarks = result.bookmarks || []
+        allBookmarks.splice(allBookmarks.length - 1 - index, 1)
+        chrome.storage.local.set({ bookmarks: allBookmarks }, () => {
+          filterBookmarks(searchInput.value) // Maintain search filter
         })
       })
     }
