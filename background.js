@@ -1,39 +1,95 @@
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.type === 'SAVE_BOOKMARK') {
-    // Validate bookmark data
-    if (!message.bookmark?.videoId || !message.bookmark?.videoTitle) {
-      sendResponse({ success: false, error: 'Invalid bookmark data' })
-      return true
+// Initialize storage
+chrome.runtime.onInstalled.addListener(() => {
+    chrome.storage.sync.get('bookmarks', (result) => {
+        if (!result.bookmarks) {
+            chrome.storage.sync.set({ bookmarks: [] }, () => {
+                console.log('Storage initialized');
+            });
+        }
+    });
+});
+
+// Handle messages from content script
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    console.log('Received message:', request);
+
+    if (request.type === 'ADD_BOOKMARK') {
+        handleAddBookmark(request.data, sendResponse);
+        return true; // Will respond asynchronously
+    }
+});
+
+// Handle adding a bookmark
+async function handleAddBookmark(bookmarkData, sendResponse) {
+    if (!bookmarkData || !bookmarkData.videoId) {
+        console.error('Invalid bookmark data');
+        sendResponse({ success: false, error: 'Invalid bookmark data' });
+        return;
     }
 
-    chrome.storage.local.get(['bookmarks'], (result) => {
-      const bookmarks = result.bookmarks || []
+    try {
+        const result = await chrome.storage.sync.get('bookmarks');
+        const bookmarks = result.bookmarks || [];
+        
+        // Find existing bookmark for this video
+        const existingIndex = bookmarks.findIndex(b => b.videoId === bookmarkData.videoId);
 
-      // Find index of existing bookmark for this video
-      const existingIndex = bookmarks.findIndex(
-        (b) => b.videoId === message.bookmark.videoId
-      )
+        if (existingIndex >= 0) {
+            // Replace existing bookmark
+            bookmarks[existingIndex] = {
+                ...bookmarkData,
+                updatedAt: Date.now()
+            };
+            console.log('Updated existing bookmark for video:', bookmarkData.videoId);
+        } else {
+            // Add new bookmark
+            bookmarks.push({
+                ...bookmarkData,
+                createdAt: Date.now()
+            });
+            console.log('Added new bookmark for video:', bookmarkData.videoId);
+        }
 
-      // Add savedAt timestamp if not present
-      const newBookmark = {
-        ...message.bookmark,
-        savedAt: Date.now(),
-      }
+        // Save updated bookmarks
+        await chrome.storage.sync.set({ bookmarks });
+        console.log('Bookmark saved successfully');
+        sendResponse({ success: true });
+    } catch (error) {
+        console.error('Error processing bookmark:', error);
+        sendResponse({ 
+            success: false, 
+            error: error.message 
+        });
+    }
+}
 
-      let updatedBookmarks
-      if (existingIndex !== -1) {
-        // Replace existing bookmark
-        updatedBookmarks = [...bookmarks]
-        updatedBookmarks[existingIndex] = newBookmark
-      } else {
-        // Add new bookmark
-        updatedBookmarks = [...bookmarks, newBookmark]
-      }
+// Keep service worker active
+const KEEP_ALIVE_INTERVAL = 20000; // 20 seconds
 
-      chrome.storage.local.set({ bookmarks: updatedBookmarks }, () => {
-        sendResponse({ success: true })
-      })
-    })
-    return true // Keep message channel open for async response
-  }
-})
+async function keepAlive() {
+    try {
+        const tabs = await chrome.tabs.query({ url: '*://*.youtube.com/*' });
+        if (tabs.length > 0) {
+            // We have active YouTube tabs, ping them to keep the service worker alive
+            tabs.forEach(tab => {
+                chrome.tabs.sendMessage(tab.id, { type: 'PING' }).catch(() => {
+                    // Ignore errors - tab might have been closed
+                });
+            });
+        }
+    } catch (error) {
+        console.error('Keep alive error:', error);
+    }
+}
+
+// Set up periodic keep-alive
+setInterval(keepAlive, KEEP_ALIVE_INTERVAL);
+
+// Handle service worker lifecycle
+self.addEventListener('activate', event => {
+    event.waitUntil(async () => {
+        // Take control of all clients
+        await clients.claim();
+        console.log('Service worker activated and claimed clients');
+    });
+});

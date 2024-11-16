@@ -10,24 +10,23 @@ document.addEventListener('DOMContentLoaded', () => {
   const lazyLoadObserver = setupLazyLoading();
 
   // Load shortcut setting
-  chrome.storage.local.get(['shortcutEnabled'], (result) => {
+  chrome.storage.sync.get(['shortcutEnabled'], (result) => {
     shortcutToggle.checked = result.shortcutEnabled !== false // Default to true
   })
 
   // Save shortcut setting
   shortcutToggle.addEventListener('change', (e) => {
-    chrome.storage.local.set({ shortcutEnabled: e.target.checked })
+    chrome.storage.sync.set({ shortcutEnabled: e.target.checked })
   })
 
   function sortBookmarks(bookmarks, sortBy) {
     return [...bookmarks].sort((a, b) => {
       switch (sortBy) {
         case 'newest':
-          // Assuming we add a savedAt timestamp when saving bookmarks
-          return b.savedAt - a.savedAt
+          return (b.savedAt || b.createdAt || 0) - (a.savedAt || a.createdAt || 0)
 
         case 'oldest':
-          return a.savedAt - b.savedAt
+          return (a.savedAt || a.createdAt || 0) - (b.savedAt || b.createdAt || 0)
 
         case 'duration':
           return b.timestamp - a.timestamp
@@ -49,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
     div.className = 'bookmark'
 
     // Format the saved date
-    const savedDate = new Date(bookmark.savedAt).toLocaleString(undefined, {
+    const savedDate = new Date(bookmark.savedAt || bookmark.createdAt).toLocaleString(undefined, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -85,6 +84,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       </div>
     `
+
     // Add click handler for share button
     const shareBtn = div.querySelector('.share-btn')
     shareBtn.addEventListener('click', async (e) => {
@@ -93,12 +93,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       try {
         await navigator.clipboard.writeText(url)
-
-        // Visual feedback
         shareBtn.classList.add('shared')
         setTimeout(() => shareBtn.classList.remove('shared'), 1500)
-
-        // Show success notification
         showNotification('Link copied to clipboard!')
       } catch (err) {
         showNotification('Failed to copy link', 'error')
@@ -151,9 +147,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   deleteAllBtn.addEventListener('click', () => {
     if (confirm('Are you sure you want to delete all bookmarks?')) {
-      chrome.storage.local.set({ bookmarks: [] }, () => {
+      chrome.storage.sync.set({ bookmarks: [] }, () => {
         allBookmarks = []
         updateBookmarksList([])
+        showNotification('All bookmarks deleted')
       })
     }
   })
@@ -162,25 +159,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const deleteBtn = e.target.closest('.delete-btn')
     if (deleteBtn) {
       const index = parseInt(deleteBtn.dataset.index)
-      chrome.storage.local.get(['bookmarks'], (result) => {
+      chrome.storage.sync.get(['bookmarks'], (result) => {
         allBookmarks = result.bookmarks || []
         allBookmarks.splice(allBookmarks.length - 1 - index, 1)
-        chrome.storage.local.set({ bookmarks: allBookmarks }, () => {
+        chrome.storage.sync.set({ bookmarks: allBookmarks }, () => {
           filterBookmarks(searchInput.value)
+          showNotification('Bookmark deleted')
         })
       })
     }
   })
 
   // Initial load
-  chrome.storage.local.get(['bookmarks'], (result) => {
+  chrome.storage.sync.get(['bookmarks'], (result) => {
+    console.log('Loading bookmarks:', result.bookmarks)
     if (result.bookmarks) {
-      allBookmarks = result.bookmarks.map((bookmark) => ({
-        ...bookmark,
-        savedAt: bookmark.savedAt || Date.now(),
-      }))
-      chrome.storage.local.set({ bookmarks: allBookmarks })
+      allBookmarks = result.bookmarks
       updateBookmarksList(allBookmarks)
+    } else {
+      updateBookmarksList([])
     }
   })
 })

@@ -3,8 +3,14 @@
   "name": "YouTube Timestamp Bookmarker",
   "version": "1.0",
   "description": "Save and manage YouTube video timestamps with ease",
-  "permissions": ["storage", "activeTab", "scripting"],
-  "host_permissions": ["*://*.youtube.com/*"],
+  "permissions": [
+    "storage",
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://*.youtube.com/*"
+  ],
   "action": {
     "default_popup": "popup.html"
   },
@@ -16,7 +22,13 @@
     {
       "matches": ["*://*.youtube.com/*"],
       "js": ["content.js"],
-      "run_at": "document_end"
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": ["popup.html", "popup.js"],
+      "matches": ["*://*.youtube.com/*"]
     }
   ],
   "icons": {

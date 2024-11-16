@@ -1,216 +1,230 @@
-// Keep track of button state
-let buttonAdded = false
+// YouTube Timestamp Bookmarker Extension
+console.log('Timpstamp Extension Loaded');
 
-// Function to show save confirmation
-function showSaveConfirmation() {
-  const notification = document.createElement('div')
-  notification.style.cssText = `
-    position: fixed;
-    bottom: 80px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 8px 16px;
-    border-radius: 4px;
-    z-index: 9999;
-    font-family: Roboto, Arial, sans-serif;
-    font-size: 14px;
-    pointer-events: none;
-    animation: fadeInOut 2s ease-in-out;
-  `
-  notification.textContent = '✓ Timestamp saved'
-  document.body.appendChild(notification)
+let currentVideoId = null;
+let port = null;
 
-  setTimeout(() => {
-    if (notification.parentNode) {
-      notification.parentNode.removeChild(notification)
+// Connect to background script
+function connectToBackground() {
+    try {
+        port = chrome.runtime.connect({ name: 'timpstamp' });
+        console.log('Connected to background script');
+    } catch (error) {
+        console.error('Failed to connect to background:', error);
     }
-  }, 2000)
 }
 
-// Function to show notification
-function showNotification(message, type = 'success') {
-  const notification = document.createElement('div')
-  notification.style.cssText = `
-    position: fixed;
-    bottom: 80px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: ${
-      type === 'success' ? 'rgba(22, 163, 74, 0.9)' : 'rgba(220, 38, 38, 0.9)'
-    };
-    color: white;
-    padding: 8px 16px;
-    border-radius: 4px;
-    z-index: 9999;
-    font-family: Roboto, Arial, sans-serif;
-    font-size: 14px;
-    pointer-events: none;
-    animation: fadeInOut 2s ease-in-out;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  `
-
-  notification.innerHTML = `
-    ${type === 'success' ? '✓' : '✕'} ${message}
-  `
-
-  document.body.appendChild(notification)
-
-  setTimeout(() => {
-    if (notification.parentNode) {
-      notification.parentNode.removeChild(notification)
-    }
-  }, 2000)
-}
-
-// Function to save timestamp
+// Save timestamp
 function saveTimestamp() {
-  const video = document.querySelector('video')
-  if (!video) return
+    try {
+        const video = document.querySelector('video');
+        if (!video) {
+            showNotification('Error: Video not found');
+            return;
+        }
 
-  const videoId = window.location.href.match(/[?&]v=([^&]+)/)?.[1]
-  const videoTitle = document.querySelector('.ytp-title-link')?.textContent
+        const videoId = new URLSearchParams(window.location.search).get('v');
+        if (!videoId) {
+            showNotification('Error: Video ID not found');
+            return;
+        }
 
-  if (!videoId || !videoTitle) {
-    showNotification('Could not save bookmark', 'error')
-    return
-  }
+        const currentTime = Math.floor(video.currentTime);
+        const hours = Math.floor(currentTime / 3600);
+        const minutes = Math.floor((currentTime % 3600) / 60);
+        const seconds = currentTime % 60;
+        
+        const formattedTime = hours > 0 
+            ? `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+            : `${minutes}:${seconds.toString().padStart(2, '0')}`;
 
-  const timestamp = Math.floor(video.currentTime)
-  const url = `${window.location.href}&t=${timestamp}s`
+        const bookmark = {
+            videoId,
+            videoTitle: document.title.split(' - YouTube')[0].trim(),
+            timestamp: currentTime,
+            formattedTime,
+            url: `https://youtube.com/watch?v=${videoId}&t=${currentTime}s`,
+            savedAt: Date.now()
+        };
 
-  const bookmark = {
-    videoId,
-    videoTitle,
-    timestamp,
-    url,
-    savedAt: Date.now(),
-  }
-
-  chrome.runtime.sendMessage(
-    { type: 'SAVE_BOOKMARK', bookmark },
-    (response) => {
-      if (response?.success) {
-        showNotification('Bookmark saved!')
-      } else {
-        showNotification('Failed to save bookmark', 'error')
-      }
+        chrome.runtime.sendMessage({
+            type: 'ADD_BOOKMARK',
+            data: bookmark
+        }, response => {
+            if (chrome.runtime.lastError) {
+                console.error('Failed to save bookmark:', chrome.runtime.lastError);
+                showNotification('Failed to save timestamp ❌');
+                // Try to reconnect
+                connectToBackground();
+                return;
+            }
+            
+            if (response && response.success) {
+                showNotification('Timestamp saved! 🎉');
+            } else {
+                showNotification('Failed to save timestamp ❌');
+            }
+        });
+    } catch (error) {
+        console.error('Error saving timestamp:', error);
+        showNotification('Failed to save timestamp ❌');
     }
-  )
 }
 
-// Function to add the bookmark button
-function addBookmarkButton() {
-  try {
-    const rightControls = document.querySelector('.ytp-right-controls')
-    const existingBtn = document.querySelector('.ytp-bookmark-button')
+// Show notification
+function showNotification(message) {
+    try {
+        const existing = document.querySelector('.yt-timestamp-notification');
+        if (existing) {
+            existing.remove();
+        }
 
-    if (rightControls && !existingBtn && !buttonAdded) {
-      const bookmarkBtn = document.createElement('button')
-      bookmarkBtn.className = 'ytp-button ytp-bookmark-button'
-      bookmarkBtn.innerHTML = `
-        <svg height="100%" version="1.1" viewBox="0 0 24 24" width="100%">
-          <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="currentColor"/>
-        </svg>
-      `
-      bookmarkBtn.title = 'Save timestamp (Alt+B)'
-      bookmarkBtn.style.cssText = `
-        opacity: 0.9;
-        width: 48px;
-        height: 100%;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        padding: 0 8px;
-      `
+        const notification = document.createElement('div');
+        notification.className = 'yt-timestamp-notification';
+        notification.textContent = message;
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--yt-spec-brand-background-primary, #0f0f0f);
+            color: var(--yt-spec-text-primary, #fff);
+            padding: 12px 24px;
+            border-radius: 4px;
+            z-index: 999999;
+            font-family: "YouTube Sans","Roboto",sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            box-shadow: 0 4px 32px rgba(0,0,0,0.4);
+            border: 1px solid var(--yt-spec-10-percent-layer, #ffffff1a);
+            pointer-events: none;
+        `;
 
-      bookmarkBtn.onmouseover = () => (bookmarkBtn.style.opacity = '1')
-      bookmarkBtn.onmouseout = () => (bookmarkBtn.style.opacity = '0.9')
-      bookmarkBtn.onclick = () => {
-        saveTimestamp()
-        bookmarkBtn.style.transform = 'scale(1.2)'
+        document.body.appendChild(notification);
         setTimeout(() => {
-          bookmarkBtn.style.transform = 'scale(1)'
-        }, 200)
-      }
-
-      const settingsBtn = rightControls.querySelector('.ytp-settings-button')
-      if (settingsBtn) {
-        rightControls.insertBefore(bookmarkBtn, settingsBtn)
-        buttonAdded = true
-      }
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 3000);
+    } catch (error) {
+        console.error('Error showing notification:', error);
     }
-  } catch (error) {
-    console.log('Error in addBookmarkButton:', error)
-  }
 }
 
-// Add CSS for notification animation
-const style = document.createElement('style')
-style.textContent = `
-  @keyframes fadeInOut {
-    0% { opacity: 0; transform: translate(-50%, 20px); }
-    15% { opacity: 1; transform: translate(-50%, 0); }
-    85% { opacity: 1; transform: translate(-50%, 0); }
-    100% { opacity: 0; transform: translate(-50%, -20px); }
-  }
-`
-document.head.appendChild(style)
+// Create bookmark button
+function createButton() {
+    const button = document.createElement('button');
+    button.className = 'ytp-button timpstamp-btn';
+    button.title = 'Save timestamp (B)';
+    button.innerHTML = `
+        <svg height="100%" version="1.1" viewBox="0 0 24 24" width="100%">
+            <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="currentColor"/>
+        </svg>
+    `;
+
+    button.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        saveTimestamp();
+    });
+
+    return button;
+}
+
+// Add bookmark button to player
+function addBookmarkButton() {
+    try {
+        if (document.querySelector('.timpstamp-btn')) return;
+
+        const rightControls = document.querySelector('.ytp-right-controls');
+        if (!rightControls) return;
+
+        const button = createButton();
+        rightControls.insertBefore(button, rightControls.firstChild);
+        console.log('Bookmark button added');
+    } catch (error) {
+        console.error('Error adding bookmark button:', error);
+    }
+}
+
+// Handle keyboard shortcut
+function handleKeyPress(event) {
+    try {
+        if (event.target.tagName === 'INPUT' || 
+            event.target.tagName === 'TEXTAREA' || 
+            event.target.isContentEditable) {
+            return;
+        }
+
+        if (event.key.toLowerCase() === 'b' && 
+            !event.ctrlKey && 
+            !event.altKey && 
+            !event.metaKey && 
+            !event.shiftKey) {
+            
+            event.preventDefault();
+            event.stopPropagation();
+            saveTimestamp();
+        }
+    } catch (error) {
+        console.error('Error handling keyboard shortcut:', error);
+    }
+}
 
 // Initialize extension
-function initializeExtension() {
-  try {
-    if (document.querySelector('.ytp-right-controls')) {
-      addBookmarkButton()
+function initialize() {
+    try {
+        console.log('Initializing extension...');
+        
+        // Connect to background script
+        connectToBackground();
+        
+        const videoId = new URLSearchParams(window.location.search).get('v');
+        if (!videoId || videoId === currentVideoId) return;
+
+        console.log('New video detected:', videoId);
+        currentVideoId = videoId;
+
+        const existingButton = document.querySelector('.timpstamp-btn');
+        if (existingButton) {
+            existingButton.remove();
+        }
+
+        addBookmarkButton();
+    } catch (error) {
+        console.error('Error initializing extension:', error);
     }
-  } catch (error) {
-    console.log('Error in initializeExtension:', error)
-  }
 }
 
-// Reset button state
-function resetButton() {
-  buttonAdded = false
-  initializeExtension()
+// Set up observers and event listeners
+try {
+    // Watch for player changes
+    const observer = new MutationObserver(() => {
+        try {
+            if (!document.querySelector('.timpstamp-btn')) {
+                const controls = document.querySelector('.ytp-right-controls');
+                if (controls) {
+                    addBookmarkButton();
+                }
+            }
+        } catch (error) {
+            console.error('Error in mutation observer:', error);
+        }
+    });
+
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+
+    // Add event listeners
+    document.addEventListener('keydown', handleKeyPress, true);
+    window.addEventListener('yt-navigate-finish', initialize);
+    window.addEventListener('load', initialize);
+
+    // Initial setup
+    console.log('Running initial setup...');
+    initialize();
+} catch (error) {
+    console.error('Error setting up extension:', error);
 }
-
-// Event listeners
-document.addEventListener('yt-navigate-finish', resetButton)
-window.addEventListener('load', initializeExtension)
-
-// MutationObserver for dynamic content
-const observer = new MutationObserver(() => {
-  if (document.querySelector('.ytp-right-controls') && !buttonAdded) {
-    initializeExtension()
-  }
-})
-
-observer.observe(document.body, {
-  childList: true,
-  subtree: true,
-})
-
-// Keyboard shortcut listener
-document.addEventListener('keydown', function(e) {
-  // Don't trigger in input fields
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-    return;
-  }
-
-  chrome.storage.sync.get(['shortcutEnabled'], function(result) {
-    if (result.shortcutEnabled) {
-      // Check for Command+S (metaKey is Command on Mac)
-      if (e.metaKey && e.key.toLowerCase() === 's' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
-        e.preventDefault();  // Prevent default save behavior
-        saveTimestamp();
-      }
-    }
-  });
-});
-
-// Initial check
-initializeExtension()
