@@ -196,11 +196,16 @@ observer.observe(document.body, {
 
 // Keyboard shortcut listener
 document.addEventListener('keydown', function(e) {
+  // Don't trigger in input fields
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+    return;
+  }
+
   chrome.storage.sync.get(['shortcutEnabled'], function(result) {
     if (result.shortcutEnabled) {
-      // Check for Option+B on Mac (altKey is Option on Mac)
-      if (e.altKey && e.key.toLowerCase() === 'b' && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
-        e.preventDefault();  // Prevent default browser behavior
+      // Check for Command+S (metaKey is Command on Mac)
+      if (e.metaKey && e.key.toLowerCase() === 's' && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+        e.preventDefault();  // Prevent default save behavior
         saveTimestamp();
       }
     }

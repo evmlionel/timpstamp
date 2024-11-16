@@ -349,8 +349,37 @@
 
       .timestamp-actions {
         display: flex;
+        gap: 4px;
+        margin-top: 8px;
+      }
+
+      .share-btn,
+      .delete-btn {
+        display: flex;
         align-items: center;
-        gap: 8px;
+        justify-content: center;
+        padding: 6px;
+        border: none;
+        background: #f3f4f6;
+        border-radius: 6px;
+        cursor: pointer;
+        color: #4b5563;
+        transition: all 0.2s;
+      }
+
+      .share-btn:hover {
+        background: #e5e7eb;
+        color: #1a73e8;
+      }
+
+      .delete-btn:hover {
+        background: #fee2e2;
+        color: #dc2626;
+      }
+
+      .timestamp-actions button svg {
+        width: 16px;
+        height: 16px;
       }
 
       .share-btn {
@@ -457,7 +486,7 @@
       <div class="settings">
         <label class="toggle-label">
           <input type="checkbox" id="shortcutToggle" />
-          Enable keyboard shortcut <kbd>⌥</kbd><kbd>B</kbd>
+          Enable keyboard shortcut <kbd>⌘</kbd><kbd>S</kbd>
         </label>
       </div>
     </div>
