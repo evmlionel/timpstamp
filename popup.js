@@ -1,3 +1,5 @@
+import { debounce, formatTime, showNotification, setupLazyLoading } from './src/utils.js';
+
 document.addEventListener('DOMContentLoaded', () => {
   const bookmarksList = document.getElementById('bookmarksList')
   const deleteAllBtn = document.getElementById('deleteAllBtn')
@@ -5,6 +7,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const shortcutToggle = document.getElementById('shortcutToggle')
   const sortSelect = document.getElementById('sortSelect')
   let allBookmarks = [] // Store all bookmarks for filtering
+  const lazyLoadObserver = setupLazyLoading();
 
   // Load shortcut setting
   chrome.storage.local.get(['shortcutEnabled'], (result) => {
@@ -46,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     div.className = 'bookmark'
 
     div.innerHTML = `
-      <img class="thumbnail" src="${thumbnailUrl}" alt="Video thumbnail">
+      <img class="thumbnail" data-src="${thumbnailUrl}" alt="Video thumbnail">
       <div class="bookmark-info">
         <div>
           <a href="${bookmark.url}" target="_blank">
@@ -71,7 +74,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <button class="delete-btn" data-index="${index}">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
+            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z" fill="currentColor"/>
           </svg>
         </button>
       </div>
@@ -96,6 +99,10 @@ document.addEventListener('DOMContentLoaded', () => {
         showNotification('Failed to copy link', 'error')
       }
     })
+
+    // Initialize lazy loading for the thumbnail
+    const thumbnail = div.querySelector('.thumbnail');
+    lazyLoadObserver.observe(thumbnail);
 
     return div
   }
@@ -129,8 +136,10 @@ document.addEventListener('DOMContentLoaded', () => {
     updateBookmarksList(filtered)
   }
 
-  // Event Listeners
-  searchInput.addEventListener('input', (e) => filterBookmarks(e.target.value))
+  // Use debounced search
+  const debouncedFilter = debounce((searchTerm) => filterBookmarks(searchTerm), 300);
+  searchInput.addEventListener('input', (e) => debouncedFilter(e.target.value));
+
   sortSelect.addEventListener('change', () =>
     filterBookmarks(searchInput.value)
   )
@@ -170,25 +179,3 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   })
 })
-
-function formatTime(seconds) {
-  const hours = Math.floor(seconds / 3600)
-  const minutes = Math.floor((seconds % 3600) / 60)
-  const remainingSeconds = seconds % 60
-
-  if (hours > 0) {
-    return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds
-      .toString()
-      .padStart(2, '0')}`
-  }
-  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
-}
-
-function showNotification(message, type = 'success') {
-  const notification = document.createElement('div')
-  notification.className = `notification ${type}`
-  notification.textContent = message
-  document.body.appendChild(notification)
-
-  setTimeout(() => notification.remove(), 2000)
-}
