@@ -195,26 +195,17 @@ observer.observe(document.body, {
 })
 
 // Keyboard shortcut listener
-document.addEventListener('keydown', (e) => {
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
-
-  if (e.altKey && e.key.toLowerCase() === 'b') {
-    e.preventDefault(); // Prevent any default Alt+B behavior
-    chrome.storage.local.get(['shortcutEnabled'], (result) => {
-      if (chrome.runtime.lastError) {
-        console.log(
-          'Error checking shortcut setting:',
-          chrome.runtime.lastError
-        )
-        return
+document.addEventListener('keydown', function(e) {
+  chrome.storage.sync.get(['shortcutEnabled'], function(result) {
+    if (result.shortcutEnabled) {
+      // Check for Option+B on Mac (altKey is Option on Mac)
+      if (e.altKey && e.key.toLowerCase() === 'b' && !e.ctrlKey && !e.metaKey && !e.shiftKey) {
+        e.preventDefault();  // Prevent default browser behavior
+        saveTimestamp();
       }
-
-      if (result.shortcutEnabled !== false) {
-        saveTimestamp()
-      }
-    })
-  }
-})
+    }
+  });
+});
 
 // Initial check
 initializeExtension()
