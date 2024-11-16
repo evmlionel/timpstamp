@@ -72,9 +72,9 @@ document.addEventListener('DOMContentLoaded', () => {
             </button>
           </div>
         </div>
-        <button class="delete-btn" data-index="${index}">
+        <button class="delete-btn" data-index="${index}" title="Delete timestamp">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z" fill="currentColor"/>
+            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
           </svg>
         </button>
       </div>

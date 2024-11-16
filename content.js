@@ -116,7 +116,7 @@ function addBookmarkButton() {
           <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="currentColor"/>
         </svg>
       `
-      bookmarkBtn.title = 'Save timestamp (B)'
+      bookmarkBtn.title = 'Save timestamp (Alt+B)'
       bookmarkBtn.style.cssText = `
         opacity: 0.9;
         width: 48px;
@@ -198,7 +198,8 @@ observer.observe(document.body, {
 document.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return
 
-  if (e.key.toLowerCase() === 'b') {
+  if (e.altKey && e.key.toLowerCase() === 'b') {
+    e.preventDefault(); // Prevent any default Alt+B behavior
     chrome.storage.local.get(['shortcutEnabled'], (result) => {
       if (chrome.runtime.lastError) {
         console.log(

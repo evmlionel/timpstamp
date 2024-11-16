@@ -169,7 +169,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        opacity: 0;
+        opacity: 0.6;
       }
 
       .bookmark:hover .delete-btn {
@@ -261,6 +261,17 @@
         color: #374151;
         cursor: pointer;
         user-select: none;
+      }
+
+      .keyboard-shortcut {
+        background: #f3f4f6;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: 12px;
+        color: #4b5563;
+        border: 1px solid #e5e7eb;
+        margin-left: 4px;
       }
 
       input[type='checkbox'] {
@@ -375,7 +386,7 @@
       <div class="settings">
         <label class="toggle-label">
           <input type="checkbox" id="shortcutToggle" />
-          Enable keyboard shortcut (B)
+          Enable keyboard shortcut (Alt+B)
         </label>
       </div>
     </div>
