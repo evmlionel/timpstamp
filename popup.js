@@ -245,9 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const deleteBtn = e.target.closest('.delete-btn');
     if (deleteBtn && !deleteBtn.disabled) {
       const bookmarkId = deleteBtn.dataset.bookmarkId;
-      if (confirm('Are you sure you want to delete this bookmark?')) {
-        deleteBookmark(deleteBtn, bookmarkId);
-      }
+      deleteBookmark(deleteBtn, bookmarkId);
     }
   });
 
