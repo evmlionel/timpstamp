@@ -55,24 +55,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const thumbnailUrl = `https://i.ytimg.com/vi/${bookmark.videoId}/maxresdefault.jpg`;
     const div = document.createElement('div');
     div.className = 'bookmark';
-
-    // Store the original bookmark data for deletion
     const bookmarkId = bookmark.savedAt || bookmark.createdAt;
-
-    // Format the saved date
-    const savedDate = new Date(
-      bookmark.savedAt || bookmark.createdAt
-    ).toLocaleString(undefined, {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
 
     div.innerHTML = `
       <div class="timestamp-preview">
-        Saved on ${savedDate}
+        Saved on ${new Date(bookmarkId).toLocaleString(undefined, {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })}
       </div>
       <div class="thumbnail-container">
         <img class="thumbnail" data-src="${thumbnailUrl}" alt="Video thumbnail">
@@ -92,9 +85,17 @@ document.addEventListener('DOMContentLoaded', () => {
               </svg>
             </button>
             <button class="delete-btn" data-bookmark-id="${bookmarkId}" title="Delete timestamp">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
-              </svg>
+              <span class="delete-icon">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
+                </svg>
+              </span>
+              <span class="loading-spinner" style="display: none;">
+                <svg class="animate-spin" width="14" height="14" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              </span>
             </button>
           </div>
         </div>
@@ -174,23 +175,79 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  let lastDeletedBookmark = null;
+
+  function showUndoNotification() {
+    const notification = document.createElement('div');
+    notification.className = 'notification with-action';
+    notification.innerHTML = `
+      <span>Bookmark deleted</span>
+      <button class="undo-btn">Undo</button>
+    `;
+
+    document.body.appendChild(notification);
+
+    const undoBtn = notification.querySelector('.undo-btn');
+    undoBtn.addEventListener('click', async () => {
+      if (lastDeletedBookmark) {
+        allBookmarks.push(lastDeletedBookmark);
+        await chrome.storage.sync.set({ bookmarks: allBookmarks });
+        filterBookmarks(searchInput.value);
+        notification.remove();
+        showNotification('Bookmark restored');
+        lastDeletedBookmark = null;
+      }
+    });
+
+    setTimeout(() => {
+      if (notification.parentNode) {
+        notification.remove();
+        lastDeletedBookmark = null;
+      }
+    }, 5000);
+  }
+
+  async function deleteBookmark(deleteBtn, bookmarkId) {
+    try {
+      // Show loading state
+      const deleteIcon = deleteBtn.querySelector('.delete-icon');
+      const loadingSpinner = deleteBtn.querySelector('.loading-spinner');
+      deleteIcon.style.display = 'none';
+      loadingSpinner.style.display = 'block';
+      deleteBtn.disabled = true;
+
+      const result = await chrome.storage.sync.get(['bookmarks']);
+      allBookmarks = result.bookmarks || [];
+      const indexToDelete = allBookmarks.findIndex(
+        (b) => (b.savedAt || b.createdAt) === parseInt(bookmarkId)
+      );
+
+      if (indexToDelete !== -1) {
+        lastDeletedBookmark = allBookmarks[indexToDelete];
+        allBookmarks.splice(indexToDelete, 1);
+        await chrome.storage.sync.set({ bookmarks: allBookmarks });
+        filterBookmarks(searchInput.value);
+        showUndoNotification();
+      }
+    } catch (error) {
+      console.error('Failed to delete bookmark:', error);
+      showNotification('Failed to delete bookmark', 'error');
+      // Reset button state
+      const deleteIcon = deleteBtn.querySelector('.delete-icon');
+      const loadingSpinner = deleteBtn.querySelector('.loading-spinner');
+      deleteIcon.style.display = 'block';
+      loadingSpinner.style.display = 'none';
+      deleteBtn.disabled = false;
+    }
+  }
+
   bookmarksList.addEventListener('click', (e) => {
     const deleteBtn = e.target.closest('.delete-btn');
-    if (deleteBtn) {
+    if (deleteBtn && !deleteBtn.disabled) {
       const bookmarkId = deleteBtn.dataset.bookmarkId;
-      chrome.storage.sync.get(['bookmarks'], (result) => {
-        allBookmarks = result.bookmarks || [];
-        const indexToDelete = allBookmarks.findIndex(
-          (b) => (b.savedAt || b.createdAt) === parseInt(bookmarkId)
-        );
-        if (indexToDelete !== -1) {
-          allBookmarks.splice(indexToDelete, 1);
-          chrome.storage.sync.set({ bookmarks: allBookmarks }, () => {
-            filterBookmarks(searchInput.value);
-            showNotification('Bookmark deleted');
-          });
-        }
-      });
+      if (confirm('Are you sure you want to delete this bookmark?')) {
+        deleteBookmark(deleteBtn, bookmarkId);
+      }
     }
   });
 
