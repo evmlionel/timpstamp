@@ -14,7 +14,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   console.log('Received message:', request);
 
   if (request.type === 'ADD_BOOKMARK') {
-    handleAddBookmark(request.data, sendResponse);
+    cohandleAddBookmark(request.data, sendResponse);
     return true; // Will respond asynchronously
   }
 });
