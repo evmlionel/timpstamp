@@ -1,8 +1,4 @@
-Okay, here is a detailed analysis and improvement plan for the YouTube Timestamp Bookmarker Chrome extension, based on the provided codebase. This document is structured for clarity and actionability by your engineering team.
-
----
-
-## YouTube Timestamp Bookmarker: Improvement Plan
+# YouTube Timestamp Bookmarker: Improvement Plan
 
 **Prepared For:** Engineering Team
 **Date:** [Insert Date]
@@ -20,20 +16,20 @@ However, there are several areas for improvement regarding code cleanup, user ex
 
 These improvements focus on removing unused code, clarifying dependencies, and improving maintainability.
 
-*   **Issue:** Unused React Component and Global Styles
+*   **Issue:** Unused React Component and Global Styles 
     *   **Observation:** The repository contains `src/components/VideoPlayer.tsx` and `src/styles/globals.css`, which appear to be part of a React setup (using Heroicons, TSX syntax, defining a design system). However, the core extension logic (`content.js`, `popup.js`) is implemented using vanilla JavaScript and does not utilize these files or React. `popup.html` references `popup.css` directly, not `globals.css`.
     *   **Impact:** Unused code increases repository size and potential confusion for developers. The design system in `globals.css` isn't being leveraged by the active parts of the extension.
     *   **Recommendation:**
         *   Verify if there are plans to migrate to React.
         *   If **not**, remove the `src/components`, `src/styles` directories, and related dependencies (like `@heroicons/react` if they were installed).
         *   If **yes**, plan the migration and integrate the existing vanilla JS logic into the React structure.
-    *   **Priority:** High (if not migrating soon) / Medium (if migration is planned)
+    *   **Priority:** High (if not migrating soon) / Medium (if migration is planned) ✅
 
-*   **Issue:** Unclear `package.json` Dependency
+*   **Issue:** Unclear `package.json` Dependency 
     *   **Observation:** `package.json` lists `"pillow": "^0.0.9"` as a dependency. Pillow is a Python Imaging Library. This is highly unusual and likely incorrect for a JavaScript-based Chrome extension.
     *   **Impact:** Indicates a potential misunderstanding of project dependencies or leftover configuration from a different context. Adds confusion.
     *   **Recommendation:** Remove the `pillow` dependency unless there's a very specific, undocumented build step that requires it (which is unlikely). Clean up `package.json` to reflect only necessary JavaScript dependencies (if any are added later for build tools, linters, etc.).
-    *   **Priority:** High
+    *   **Priority:** High ✅
 
 *   **Issue:** Redundant Utility Functions
     *   **Observation:** There are two distinct `showNotification` functions: one in `content.js` (creating `.ytb-notification`) and one in `src/utils.js` (creating a generic notification div with inline styles). The popup (`popup.js`) imports and uses the one from `src/utils.js`, while the content script uses its own.
