@@ -65,7 +65,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Sorting Logic ---
   function sortBookmarkGroups(groupedBookmarks, sortBy) {
     // Convert grouped object to an array for sorting
-    const groupsArray = Object.entries(groupedBookmarks).map(([videoId, data]) => ({ videoId, ...data }));
+    const groupsArray = Object.entries(groupedBookmarks).map(
+      ([videoId, data]) => ({ videoId, ...data })
+    );
 
     groupsArray.sort((a, b) => {
       switch (sortBy) {
@@ -107,13 +109,10 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="thumbnail-container">
         <img
           class="thumbnail"
-          src="" /* Initially empty */
-          data-src="${finalThumbnailUrl}"
+          src="${finalThumbnailUrl}" /* Set src directly */
           alt="Video thumbnail"
-          loading="lazy" /* Add native lazy loading */
-          onerror="this.style.display='none'; this.parentElement.querySelector('.thumbnail-placeholder').style.display='block';" /* Basic error handling */
         />
-        <div class="thumbnail-placeholder" style="display: none; background: #eee; height: 100%; width: 100%; text-align: center; line-height: 68px; color: #aaa; font-size: 12px;">No thumb</div>
+        <div class="thumbnail-placeholder" style="background: #eee; height: 100%; width: 100%; text-align: center; line-height: 68px; color: #aaa; font-size: 12px;">No thumb</div>
         <div class="timestamp-badge">${formatTime(bookmark.timestamp)}</div>
       </div>
       <div class="bookmark-info">
@@ -122,7 +121,9 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="title">${bookmark.videoTitle}</div>
           </a>
           <div class="timestamp-actions">
-            <button class="share-btn" data-url="${bookmark.url}" title="Copy link to clipboard">
+            <button class="share-btn" data-url="${
+              bookmark.url
+            }" title="Copy link to clipboard">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92zM18 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM6 13c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm12 7.02c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z" fill="currentColor"/>
               </svg>
@@ -147,6 +148,16 @@ document.addEventListener('DOMContentLoaded', () => {
         <textarea class="notes-textarea" data-bookmark-id="${bookmarkId}" placeholder="Add notes...">${notes}</textarea>
       </div>
     `;
+
+    // Add error handler for the thumbnail image
+    const thumbnailImg = div.querySelector('.thumbnail');
+    const thumbnailPlaceholder = div.querySelector('.thumbnail-placeholder');
+    thumbnailImg.addEventListener('error', () => {
+      thumbnailImg.style.display = 'none';
+      if (thumbnailPlaceholder) {
+        thumbnailPlaceholder.style.display = 'block';
+      }
+    });
 
     // Add click handler for share button
     const shareBtn = div.querySelector('.share-btn');
@@ -197,22 +208,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const videoBaseUrl = group.bookmarks[0].url.split('&t=')[0];
         groupHeader.textContent = group.title; // Use group.title directly
         groupHeader.dataset.folderName = group.title; // Use group.title directly
-        groupHeader.addEventListener('click', () => toggleFolder(group.title, groupHeader)); // Use group.title directly
+        groupHeader.addEventListener('click', () =>
+          toggleFolder(group.title, groupHeader)
+        ); // Use group.title directly
 
         const bookmarksContainer = document.createElement('div');
         bookmarksContainer.className = 'timestamp-list-container';
 
         // Sort bookmarks within the folder by time added (descending - newest first)
-        const sortedBookmarks = group.bookmarks.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        const sortedBookmarks = group.bookmarks.sort(
+          (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
+        );
 
         sortedBookmarks.forEach((bookmark, index) => {
           const bookmarkElement = createBookmarkElement(bookmark, index);
           bookmarksContainer.appendChild(bookmarkElement);
-          // Observe the thumbnail for lazy loading
-          const img = bookmarkElement.querySelector('.thumbnail');
-          if (img && img.dataset.src) {
-            lazyLoadObserver.observe(img);
-          }
         });
         groupDiv.appendChild(groupHeader);
         groupDiv.appendChild(bookmarksContainer);
@@ -246,7 +256,11 @@ document.addEventListener('DOMContentLoaded', () => {
   );
 
   deleteAllBtn.addEventListener('click', async () => {
-    if (window.confirm('Are you sure you want to delete ALL bookmarks? This cannot be undone.')) {
+    if (
+      window.confirm(
+        'Are you sure you want to delete ALL bookmarks? This cannot be undone.'
+      )
+    ) {
       deleteAllBtn.disabled = true; // Disable while deleting
       try {
         await chrome.storage.sync.set({ bookmarks: [] });
@@ -338,7 +352,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const result = await chrome.storage.sync.get('bookmarks');
       const bookmarks = result.bookmarks || [];
-      const bookmarkIndex = bookmarks.findIndex(b => b.id === bookmarkId);
+      const bookmarkIndex = bookmarks.findIndex((b) => b.id === bookmarkId);
 
       if (bookmarkIndex !== -1) {
         bookmarks[bookmarkIndex].notes = newNotes;
@@ -370,10 +384,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Initialize Textarea Heights on Render ---
   // We need to ensure heights are set after elements are in the DOM
   // This can be tricky with async rendering. A MutationObserver is robust.
-  const resizeObserver = new MutationObserver(mutations => {
+  const resizeObserver = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
       if (mutation.type === 'childList') {
-        mutation.addedNodes.forEach(node => {
+        mutation.addedNodes.forEach((node) => {
           if (node.nodeType === 1 && node.classList.contains('bookmark')) {
             const textarea = node.querySelector('.notes-textarea');
             if (textarea) {
@@ -383,10 +397,10 @@ document.addEventListener('DOMContentLoaded', () => {
           }
           // Also handle cases where the whole group is added
           if (node.nodeType === 1 && node.classList.contains('video-group')) {
-             node.querySelectorAll('.notes-textarea').forEach(textarea => {
-                 textarea.style.height = 'auto';
-                 textarea.style.height = `${textarea.scrollHeight}px`;
-             });
+            node.querySelectorAll('.notes-textarea').forEach((textarea) => {
+              textarea.style.height = 'auto';
+              textarea.style.height = `${textarea.scrollHeight}px`;
+            });
           }
         });
       }
@@ -424,9 +438,11 @@ document.addEventListener('DOMContentLoaded', () => {
           // Re-enable might happen automatically if the element is removed,
           // but good practice to handle it if deletion fails.
           // The element might not exist anymore if deletion was successful.
-          const stillExistingBtn = document.querySelector(`.delete-btn[data-bookmark-id="${bookmarkId}"]`);
+          const stillExistingBtn = document.querySelector(
+            `.delete-btn[data-bookmark-id="${bookmarkId}"]`
+          );
           if (stillExistingBtn) {
-              stillExistingBtn.disabled = false;
+            stillExistingBtn.disabled = false;
           }
         });
       }
@@ -448,12 +464,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Update display
     listContainer.style.display = isCollapsed ? 'none' : 'block';
 
-     // Update and save state
+    // Update and save state
     const stateResult = await chrome.storage.local.get(FOLDER_STATE_KEY);
     const folderStates = stateResult[FOLDER_STATE_KEY] || {};
     folderStates[folderName] = isCollapsed;
     await chrome.storage.local.set({ [FOLDER_STATE_KEY]: folderStates });
-     console.log('Folder states updated:', folderStates);
+    console.log('Folder states updated:', folderStates);
   }
   // --- End of new function ---
 

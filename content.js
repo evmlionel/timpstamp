@@ -42,12 +42,20 @@ function saveTimestamp() {
 
     // More robust title extraction
     let videoTitle = 'Unknown Title';
-    const titleElement = document.querySelector('h1.ytd-watch-metadata #title, h1.title.ytd-video-primary-info-renderer'); // Add fallback selector
+    const titleElement = document.querySelector(
+        'h1.ytd-watch-metadata yt-formatted-string#title, ' + // Refined primary selector
+        'h1.title.ytd-video-primary-info-renderer yt-formatted-string, ' + // Refined secondary selector
+        '#container > h1.title > yt-formatted-string' // Common alternative structure
+    );
     if (titleElement && titleElement.textContent) {
       videoTitle = titleElement.textContent.trim();
     } else {
       // Fallback to document title if specific element not found
-      videoTitle = document.title.split(' - YouTube')[0].trim();
+      if (document.title.endsWith(' - YouTube')) {
+          videoTitle = document.title.substring(0, document.title.length - ' - YouTube'.length).trim();
+      } else {
+          videoTitle = document.title.trim(); // Use the full title if it doesn't end as expected
+      }
       console.warn('Could not find specific title element, using document.title as fallback.');
     }
 

@@ -43,19 +43,26 @@ The content is organized as follows:
 </file_summary>
 
 <directory_structure>
-.cursor/rules/test.mdc
+.cursor/
+  rules/
+    test.mdc
+src/
+  components/
+    VideoPlayer.tsx
+  styles/
+    globals.css
+  utils.js
 .gitignore
 background.js
+content.css
 content.js
 LICENSE
 manifest.json
 package.json
+popup.css
 popup.html
 popup.js
 README.md
-src/components/VideoPlayer.tsx
-src/styles/globals.css
-src/utils.js
 </directory_structure>
 
 <files>
@@ -71,30 +78,6 @@ globs:
 
 - You can @ files here
 - You can use markdown but dont have to
-</file>
-
-<file path="LICENSE">
-MIT License
-
-Copyright (c) 2024 Lionel
-
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
-
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
 </file>
 
 <file path="src/components/VideoPlayer.tsx">
@@ -237,6 +220,807 @@ export const setupLazyLoading = () => {
 };
 </file>
 
+<file path="content.css">
+/* Styles for elements injected by the content script */
+
+.ytb-bookmark-btn {
+  /* Ensure the bookmark icon is visible */
+  fill: currentColor;
+  /* Add subtle hover effect if desired */
+  transition: opacity 0.2s ease-in-out;
+}
+
+.ytb-bookmark-btn:hover {
+  opacity: 0.8;
+}
+
+.ytb-notification {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  /* Use YouTube's theme variables for better integration */
+  background: var(--yt-spec-brand-background-primary, #0f0f0f);
+  color: var(--yt-spec-text-primary, #fff);
+  padding: 12px 24px;
+  border-radius: 4px;
+  z-index: 999999; /* High z-index to appear above most elements */
+  font-family: "YouTube Sans","Roboto",sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 32px rgba(0,0,0,0.4);
+  border: 1px solid var(--yt-spec-10-percent-layer, rgba(255, 255, 255, 0.1));
+  pointer-events: none; /* Don't interfere with clicks */
+  opacity: 1;
+  transition: opacity 0.5s ease-out;
+}
+
+/* Fade out effect can be added if needed */
+/*
+.ytb-notification.fade-out {
+  opacity: 0;
+}
+*/
+</file>
+
+<file path="LICENSE">
+MIT License
+
+Copyright (c) 2024 Lionel
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+</file>
+
+<file path="popup.css">
+/* Styles for the popup UI */
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  width: 400px; /* Slightly wider for better spacing */
+  min-height: 150px;
+  max-height: 600px; /* Keep max height */
+  overflow-y: auto;
+  padding: 10px;
+  background-color: #f4f4f4; /* Lighter background */
+  margin: 0;
+  background: #ffffff;
+  color: #1f2937;
+  overflow: hidden; /* Prevent body scroll when list scrolls */
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px; /* Reduced margin */
+}
+
+h2 {
+  font-size: 1.2em; /* Slightly smaller */
+  margin: 0;
+  color: #333;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sort-select {
+  padding: 6px 28px 6px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+  background: white;
+  cursor: pointer;
+  color: #374151;
+  appearance: none;
+  background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%236B7280%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.4-12.8z%22%2F%3E%3C%2Fsvg%3E');
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 8px auto;
+  width: 110px;
+}
+
+.sort-select:hover {
+  border-color: #d1d5db;
+}
+
+.search-container {
+  position: relative;
+  /* Adjusted margin-bottom if needed based on layout */
+  padding: 0 2px;
+}
+
+.search-input {
+  width: calc(100% - 48px); /* Adjust width considering padding and icon */
+  padding: 8px 12px 8px 32px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 13px;
+  outline: none;
+  transition: all 0.2s;
+  background: #f9fafb;
+  color: #374151;
+}
+
+.search-input::placeholder {
+  color: #9ca3af;
+}
+
+.search-input:focus {
+  background: white;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #9ca3af;
+  width: 16px;
+  height: 16px;
+  pointer-events: none; /* Make icon non-interactive */
+}
+
+#bookmarksList {
+  max-height: 400px; /* Adjust as needed */
+  overflow-y: auto;
+  margin: 0 -16px; /* Counteract body padding */
+  padding: 4px 16px 16px; /* Restore padding within the scrollable area */
+  /* Add some space if footer exists */
+  margin-bottom: 60px; /* Ensure space for fixed footer */
+}
+
+.bookmark {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  transition: all 0.2s;
+  align-items: center;
+  background: white;
+  border: 1px solid #f3f4f6;
+  margin-bottom: 8px;
+  position: relative;
+}
+
+.bookmark:hover {
+  background: #f9fafb;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.timestamp-preview {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  pointer-events: none;
+  white-space: nowrap;
+  z-index: 1000;
+}
+
+.timestamp-preview::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 6px;
+  border-style: solid;
+  border-color: rgba(0, 0, 0, 0.8) transparent transparent transparent;
+}
+
+.bookmark:hover .timestamp-preview {
+  display: block;
+}
+
+.thumbnail-container {
+  position: relative;
+  width: 120px;
+  height: 68px;
+  border-radius: 6px;
+  overflow: hidden;
+  flex-shrink: 0; /* Prevent shrinking */
+}
+
+.thumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+  background-color: #e5e7eb; /* Placeholder background */
+}
+
+.thumbnail-container:hover .thumbnail {
+  transform: scale(1.05);
+}
+
+.thumbnail[src]:not([src=""]) {
+  background-color: transparent; /* Remove placeholder once loaded */
+}
+
+.timestamp-badge {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.bookmark-info {
+  flex: 1;
+  min-width: 0; /* Allow shrinking */
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start; /* Align items to the top */
+  gap: 8px;
+}
+
+.bookmark-info > div:first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.title {
+  font-size: 14px;
+  font-weight: 500;
+  color: #111827;
+  margin-bottom: 6px;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.2s;
+  /* Standard property for line clamping */
+  line-clamp: 2;
+  /* Ensure link takes full width */
+  display: block;
+}
+
+a {
+  text-decoration: none;
+  color: inherit;
+}
+
+.title:hover {
+  color: #1d4ed8;
+}
+
+.timestamp-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0; /* Prevent shrinking */
+}
+
+.action-btn,
+.delete-btn,
+.share-btn {
+  background: none;
+  border: none;
+  padding: 4px;
+  cursor: pointer;
+  color: #6b7280;
+  border-radius: 4px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.action-btn svg,
+.delete-btn svg,
+.share-btn svg {
+  display: block;
+}
+
+.action-btn:hover,
+.delete-btn:hover,
+.share-btn:hover {
+  color: #111827;
+  background: #f3f4f6;
+}
+
+.delete-btn:hover {
+  color: #dc2626;
+  background: #fee2e2;
+}
+
+.delete-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: none;
+  color: #9ca3af;
+}
+
+.share-btn.shared {
+  color: #16a34a;
+  background: #dcfce7;
+}
+
+.loading-spinner {
+  display: none;
+}
+
+.delete-btn .loading-spinner {
+  width: 14px;
+  height: 14px;
+}
+
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.empty-state,
+.loading-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6b7280;
+  font-size: 14px;
+  border-radius: 8px;
+  background-color: #f9fafb;
+  border: 1px dashed #e5e7eb;
+  margin-top: 16px;
+}
+
+.footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: white;
+  border-top: 1px solid #e5e7eb;
+}
+
+.delete-all-btn {
+  padding: 8px 16px;
+  border: 1px solid #ef4444;
+  background: #fee2e2;
+  color: #ef4444;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.delete-all-btn:hover {
+  background: #fecaca;
+  border-color: #dc2626;
+}
+
+.delete-all-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: #f3f4f6;
+  color: #9ca3af;
+  border-color: #e5e7eb;
+}
+
+.settings-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-container label {
+  font-size: 13px;
+  color: #4b5563;
+  user-select: none;
+  cursor: pointer;
+}
+
+/* Basic toggle switch styling */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 34px;
+  height: 20px;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: 0.4s;
+  border-radius: 20px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: 0.4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #2563eb;
+}
+
+input:checked + .slider:before {
+  transform: translateX(14px);
+}
+
+/* Notification styles */
+#notificationArea {
+  position: fixed;
+  bottom: 70px; /* Position above footer */
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none; /* Allow clicks through area */
+}
+
+.notification {
+  background-color: rgba(17, 24, 39, 0.9);
+  color: white;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  opacity: 0;
+  transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+  visibility: hidden;
+  min-width: 180px;
+  text-align: center;
+  pointer-events: all; /* Make individual notifications clickable */
+  transform: translateY(10px);
+}
+
+.notification.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.notification.error {
+  background-color: rgba(220, 38, 38, 0.9);
+}
+
+.notification.with-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.notification .undo-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: background 0.2s;
+  margin-left: 10px;
+}
+
+.notification .undo-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.video-group {
+  margin-bottom: 16px;
+  border-left: 3px solid transparent; /* Add some spacing and potential indicator */
+  padding-left: 8px;
+  transition: border-color 0.2s ease;
+}
+
+.video-group:hover {
+  border-left-color: #e5e7eb;
+}
+
+.video-group-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 12px;
+  margin-top: 0;
+  cursor: pointer;
+  position: relative;
+  padding-right: 20px; /* Space for the indicator */
+  transition: color 0.2s ease;
+}
+
+.video-group-title a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.video-group-title:hover {
+  color: #111827;
+}
+
+.video-group-title::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 50%;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid #6b7280; /* Chevron pointing down (expanded) */
+  transform: translateY(-50%);
+  transition: transform 0.3s ease, border-top-color 0.2s;
+}
+
+.video-group.collapsed .video-group-title::after {
+  transform: translateY(-50%) rotate(-90deg); /* Point right when collapsed */
+}
+
+.video-group-title:hover::after {
+  border-top-color: #111827;
+}
+
+.video-group-bookmarks {
+  max-height: 1000px; /* Allow for smooth transition */
+  overflow: hidden;
+  transition: max-height 0.4s ease-in-out, opacity 0.3s ease, visibility 0.3s;
+  opacity: 1;
+  visibility: visible;
+}
+
+.video-group.collapsed .video-group-bookmarks {
+  max-height: 0;
+  opacity: 0;
+  visibility: hidden;
+  margin-top: -8px; /* Reduce space below title when collapsed */
+  /* Optionally add margin-top: -Npx; if there's unwanted space when collapsed */
+}
+
+.video-group-bookmarks .bookmark {
+  margin-bottom: 0; /* Remove bottom margin as gap is handled by container */
+}
+
+.video-group:last-child {
+  margin-bottom: 0;
+  border-bottom: none;
+  padding-bottom: 5px; /* Less padding for the last group */
+}
+
+.video-group-title a {
+  text-decoration: none;
+  color: inherit;
+  transition: color 0.2s;
+}
+
+.video-group-title a:hover {
+  color: #1d4ed8;
+}
+
+/* Notes Textarea Styles */
+.notes-container {
+  margin-top: 8px;
+}
+
+.notes-textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  resize: none; /* Disable manual resize */
+  overflow-y: hidden; /* Hide scrollbar unless needed by auto-resize */
+  min-height: 30px; /* Minimum height before expanding */
+  background-color: #f9fafb;
+  color: #374151;
+  transition: border-color 0.2s, background-color 0.2s;
+}
+
+.notes-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 1px #3b82f6;
+}
+
+.notes-textarea::placeholder {
+  color: #9ca3af;
+}
+
+/* Utility Styles */
+.hidden {
+  display: none;
+}
+
+.folder {
+  background-color: #fff; /* White background for folders */
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-bottom: 8px; /* Reduced margin */
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05); /* Subtle shadow */
+}
+
+.folder-header {
+  padding: 8px 12px;
+  background-color: #e9ecef; /* Light header background */
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 1em; /* Standardized font size */
+  color: #495057;
+  border-bottom: 1px solid #ddd;
+  position: relative; /* For positioning the arrow */
+  user-select: none; /* Prevent text selection on click */
+}
+
+.folder-header::before {
+  content: '▶'; /* Collapsed state: right arrow */
+  position: absolute;
+  left: 12px;
+  font-size: 0.8em;
+  transition: transform 0.2s ease-in-out;
+  color: #6c757d;
+}
+
+.folder-header:not(.collapsed)::before {
+  content: '▼'; /* Expanded state: down arrow */
+}
+
+.folder-header.collapsed::before {
+  /* Keep the right arrow for collapsed state */
+  content: '▶';
+}
+
+.folder-header span { /* Adjust if title text is wrapped in span */
+  margin-left: 20px; /* Space for the arrow */
+}
+
+.timestamp-list-container {
+  padding: 5px 12px 10px 12px; /* Adjusted padding */
+  border-top: none; /* Removed top border as header has bottom border */
+  max-height: 300px; /* Limit height for long lists */
+  overflow-y: auto; /* Scroll within folder if needed */
+}
+
+.timestamp-list-container::-webkit-scrollbar {
+  width: 6px;
+}
+
+.timestamp-list-container::-webkit-scrollbar-thumb {
+  background-color: #ccc;
+  border-radius: 3px;
+}
+
+.timestamp-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0; /* Reduced vertical padding */
+  border-bottom: 1px solid #eee; /* Lighter separator */
+  font-size: 0.9em;
+}
+
+.timestamp-item:last-child {
+  border-bottom: none;
+}
+
+.timestamp-item a {
+  color: #007bff;
+  text-decoration: none;
+  flex-grow: 1;
+  margin-right: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis; /* Add ellipsis for long titles */
+}
+
+.timestamp-item a:hover {
+  text-decoration: underline;
+}
+
+.delete-button {
+  background: none;
+  border: none;
+  color: #dc3545; /* Red color for delete */
+  cursor: pointer;
+  font-size: 1.1em;
+  padding: 0 5px;
+  line-height: 1;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.delete-button:hover {
+  color: #c82333;
+  opacity: 1;
+}
+
+.no-timestamps-message {
+  text-align: center;
+  color: #6c757d;
+  padding: 20px;
+  font-style: italic;
+}
+
+body::-webkit-scrollbar {
+  width: 8px;
+}
+
+body::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+body::-webkit-scrollbar-thumb {
+  background: #aaa;
+  border-radius: 4px;
+}
+
+body::-webkit-scrollbar-thumb:hover {
+  background: #888;
+}
+</file>
+
 <file path=".gitignore">
 # Dependencies
 node_modules/
@@ -318,6 +1102,9 @@ Desktop.ini
 # Project Specific
 resizer.py
 tmpsnaiser4.svg
+
+repomix-output.xml
+improvements.md
 </file>
 
 <file path="package.json">
@@ -1129,7 +1916,7 @@ h3 { font-size: var(--font-size-lg); }
   "permissions": [
     "storage",
     "activeTab",
-    "scripting"
+    "alarms"
   ],
   "host_permissions": [
     "*://*.youtube.com/*"
@@ -1145,13 +1932,8 @@ h3 { font-size: var(--font-size-lg); }
     {
       "matches": ["*://*.youtube.com/*"],
       "js": ["content.js"],
+      "css": ["content.css"],
       "run_at": "document_idle"
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": ["popup.html", "popup.js"],
-      "matches": ["*://*.youtube.com/*"]
     }
   ],
   "icons": {
@@ -1166,13 +1948,36 @@ h3 { font-size: var(--font-size-lg); }
 <file path="background.js">
 // Initialize storage
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.sync.get('bookmarks', (result) => {
+  chrome.storage.sync.get(['bookmarks', 'shortcutEnabled'], (result) => {
     if (!result.bookmarks) {
       chrome.storage.sync.set({ bookmarks: [] }, () => {
-        console.log('Storage initialized');
+        console.log('Bookmark storage initialized');
+      });
+    }
+    // Ensure shortcutEnabled has a default value (true)
+    if (typeof result.shortcutEnabled === 'undefined') {
+      chrome.storage.sync.set({ shortcutEnabled: true }, () => {
+          console.log('Shortcut setting initialized');
       });
     }
   });
+  // Create the alarm when the extension is installed or updated
+  chrome.alarms.create('keepAlive', { periodInMinutes: 0.5 }); // Run every 30 seconds
+});
+
+// Listener for the alarm
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === 'keepAlive') {
+    // Perform a minimal operation to keep the service worker alive, e.g., check storage
+    chrome.storage.sync.get(null, (items) => {
+      if (chrome.runtime.lastError) {
+        console.log('Keep-alive check failed:', chrome.runtime.lastError);
+      } else {
+        // Optional: log successful keep-alive check
+        // console.log('Keep-alive check successful.');
+      }
+    });
+  }
 });
 
 // Handle messages from content script
@@ -1187,35 +1992,37 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // Handle adding a bookmark
 async function handleAddBookmark(bookmarkData, sendResponse) {
-  if (!bookmarkData || !bookmarkData.videoId) {
-    console.error('Invalid bookmark data');
+  if (!bookmarkData || !bookmarkData.videoId || typeof bookmarkData.timestamp === 'undefined') {
+    console.error('Invalid bookmark data:', bookmarkData);
     sendResponse({ success: false, error: 'Invalid bookmark data' });
     return;
   }
+
+  // Create a unique ID for the bookmark
+  const bookmarkId = `${bookmarkData.videoId}_${bookmarkData.timestamp}`;
 
   try {
     const result = await chrome.storage.sync.get('bookmarks');
     const bookmarks = result.bookmarks || [];
 
-    // Find existing bookmark for this video
-    const existingIndex = bookmarks.findIndex(
-      (b) => b.videoId === bookmarkData.videoId
-    );
+    // Check if a bookmark with the exact same ID already exists
+    const existingIndex = bookmarks.findIndex((b) => b.id === bookmarkId);
 
     if (existingIndex >= 0) {
-      // Replace existing bookmark
-      bookmarks[existingIndex] = {
-        ...bookmarkData,
-        updatedAt: Date.now(),
-      };
-      console.log('Updated existing bookmark for video:', bookmarkData.videoId);
+      // Bookmark for this exact video and timestamp already exists
+      console.log('Bookmark already exists:', bookmarkId);
+      sendResponse({ success: false, error: 'Bookmark already exists' });
+      return; // Don't add duplicates
     } else {
-      // Add new bookmark
-      bookmarks.push({
+      // Add new bookmark with unique ID
+      const newBookmark = {
         ...bookmarkData,
-        createdAt: Date.now(),
-      });
-      console.log('Added new bookmark for video:', bookmarkData.videoId);
+        id: bookmarkId, // Store the unique ID
+        createdAt: Date.now(), // Keep track of creation time
+        notes: '', // Add an empty notes field
+      };
+      bookmarks.push(newBookmark);
+      console.log('Added new bookmark:', newBookmark);
     }
 
     // Save updated bookmarks
@@ -1230,28 +2037,6 @@ async function handleAddBookmark(bookmarkData, sendResponse) {
     });
   }
 }
-
-// Keep service worker active
-const KEEP_ALIVE_INTERVAL = 20000; // 20 seconds
-
-async function keepAlive() {
-  try {
-    const tabs = await chrome.tabs.query({ url: '*://*.youtube.com/*' });
-    if (tabs.length > 0) {
-      // We have active YouTube tabs, ping them to keep the service worker alive
-      tabs.forEach((tab) => {
-        chrome.tabs.sendMessage(tab.id, { type: 'PING' }).catch(() => {
-          // Ignore errors - tab might have been closed
-        });
-      });
-    }
-  } catch (error) {
-    console.error('Keep alive error:', error);
-  }
-}
-
-// Set up periodic keep-alive
-setInterval(keepAlive, KEEP_ALIVE_INTERVAL);
 
 // Handle service worker lifecycle
 self.addEventListener('activate', (event) => {
@@ -1268,17 +2053,23 @@ self.addEventListener('activate', (event) => {
 console.log('Timpstamp Extension Loaded');
 
 let currentVideoId = null;
-let port = null;
+let shortcutEnabled = true; // Default to enabled, will be updated from storage
 
-// Connect to background script
-function connectToBackground() {
-  try {
-    port = chrome.runtime.connect({ name: 'timpstamp' });
-    console.log('Connected to background script');
-  } catch (error) {
-    console.error('Failed to connect to background:', error);
-  }
+// Function to load initial shortcut setting
+function loadShortcutSetting() {
+  chrome.storage.sync.get('shortcutEnabled', (result) => {
+    shortcutEnabled = result.shortcutEnabled !== false; // Default true if undefined
+    console.log('Shortcut setting loaded:', shortcutEnabled);
+  });
 }
+
+// Listen for changes in storage (e.g., when changed via popup)
+chrome.storage.onChanged.addListener((changes, namespace) => {
+  if (namespace === 'sync' && changes.shortcutEnabled) {
+    shortcutEnabled = changes.shortcutEnabled.newValue !== false;
+    console.log('Shortcut setting updated:', shortcutEnabled);
+  }
+});
 
 // Save timestamp
 function saveTimestamp() {
@@ -1300,6 +2091,25 @@ function saveTimestamp() {
     const minutes = Math.floor((currentTime % 3600) / 60);
     const seconds = currentTime % 60;
 
+    // More robust title extraction
+    let videoTitle = 'Unknown Title';
+    const titleElement = document.querySelector(
+        'h1.ytd-watch-metadata yt-formatted-string#title, ' + // Refined primary selector
+        'h1.title.ytd-video-primary-info-renderer yt-formatted-string, ' + // Refined secondary selector
+        '#container > h1.title > yt-formatted-string' // Common alternative structure
+    );
+    if (titleElement && titleElement.textContent) {
+      videoTitle = titleElement.textContent.trim();
+    } else {
+      // Fallback to document title if specific element not found
+      if (document.title.endsWith(' - YouTube')) {
+          videoTitle = document.title.substring(0, document.title.length - ' - YouTube'.length).trim();
+      } else {
+          videoTitle = document.title.trim(); // Use the full title if it doesn't end as expected
+      }
+      console.warn('Could not find specific title element, using document.title as fallback.');
+    }
+
     const formattedTime =
       hours > 0
         ? `${hours}:${minutes.toString().padStart(2, '0')}:${seconds
@@ -1309,7 +2119,7 @@ function saveTimestamp() {
 
     const bookmark = {
       videoId,
-      videoTitle: document.title.split(' - YouTube')[0].trim(),
+      videoTitle: videoTitle,
       timestamp: currentTime,
       formattedTime,
       url: `https://youtube.com/watch?v=${videoId}&t=${currentTime}s`,
@@ -1325,8 +2135,6 @@ function saveTimestamp() {
         if (chrome.runtime.lastError) {
           console.error('Failed to save bookmark:', chrome.runtime.lastError);
           showNotification('Failed to save timestamp ❌');
-          // Try to reconnect
-          connectToBackground();
           return;
         }
 
@@ -1346,31 +2154,15 @@ function saveTimestamp() {
 // Show notification
 function showNotification(message) {
   try {
-    const existing = document.querySelector('.yt-timestamp-notification');
+    const existing = document.querySelector('.ytb-notification'); // Use new class
     if (existing) {
       existing.remove();
     }
 
     const notification = document.createElement('div');
-    notification.className = 'yt-timestamp-notification';
+    notification.className = 'ytb-notification'; // Use new class
     notification.textContent = message;
-    notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--yt-spec-brand-background-primary, #0f0f0f);
-            color: var(--yt-spec-text-primary, #fff);
-            padding: 12px 24px;
-            border-radius: 4px;
-            z-index: 999999;
-            font-family: "YouTube Sans","Roboto",sans-serif;
-            font-size: 14px;
-            font-weight: 500;
-            box-shadow: 0 4px 32px rgba(0,0,0,0.4);
-            border: 1px solid var(--yt-spec-10-percent-layer, #ffffff1a);
-            pointer-events: none;
-        `;
+    // Styles are now applied via content.css
 
     document.body.appendChild(notification);
     setTimeout(() => {
@@ -1386,7 +2178,7 @@ function showNotification(message) {
 // Create bookmark button
 function createButton() {
   const button = document.createElement('button');
-  button.className = 'ytp-button timpstamp-btn';
+  button.className = 'ytp-button ytb-bookmark-btn'; // Use new class
   button.title = 'Save timestamp (B)';
   button.innerHTML = `
         <svg height="100%" version="1.1" viewBox="0 0 24 24" width="100%">
@@ -1406,7 +2198,7 @@ function createButton() {
 // Add bookmark button to player
 function addBookmarkButton() {
   try {
-    if (document.querySelector('.timpstamp-btn')) return;
+    if (document.querySelector('.ytb-bookmark-btn')) return;
 
     const rightControls = document.querySelector('.ytp-right-controls');
     if (!rightControls) return;
@@ -1422,6 +2214,9 @@ function addBookmarkButton() {
 // Handle keyboard shortcut
 function handleKeyPress(event) {
   try {
+    // Check if shortcut is enabled
+    if (!shortcutEnabled) return;
+
     if (
       event.target.tagName === 'INPUT' ||
       event.target.tagName === 'TEXTAREA' ||
@@ -1451,8 +2246,8 @@ function initialize() {
   try {
     console.log('Initializing extension...');
 
-    // Connect to background script
-    connectToBackground();
+    // Load initial shortcut setting
+    loadShortcutSetting();
 
     const videoId = new URLSearchParams(window.location.search).get('v');
     if (!videoId || videoId === currentVideoId) return;
@@ -1460,7 +2255,7 @@ function initialize() {
     console.log('New video detected:', videoId);
     currentVideoId = videoId;
 
-    const existingButton = document.querySelector('.timpstamp-btn');
+    const existingButton = document.querySelector('.ytb-bookmark-btn');
     if (existingButton) {
       existingButton.remove();
     }
@@ -1476,7 +2271,7 @@ try {
   // Watch for player changes
   const observer = new MutationObserver(() => {
     try {
-      if (!document.querySelector('.timpstamp-btn')) {
+      if (!document.querySelector('.ytb-bookmark-btn')) {
         const controls = document.querySelector('.ytp-right-controls');
         if (controls) {
           addBookmarkButton();
@@ -2062,9 +2857,10 @@ try {
       <div class="header-top">
         <h2>YouTube Timestamps</h2>
         <div class="header-controls">
-          <select id="sortSelect" class="sort-select">
-            <option value="newest">Latest</option>
-            <option value="oldest">Oldest</option>
+          <select id="sortSelect" class="sort-select" title="Sort bookmarks">
+            <option value="newest">Sort: Newest</option>
+            <option value="oldest">Sort: Oldest</option>
+            <option value="title">Sort: Title (A-Z)</option>
           </select>
           <button id="deleteAllBtn" class="delete-all-btn">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
@@ -2099,7 +2895,15 @@ try {
     </div>
 
     <div class="bookmarks-container">
-      <div id="bookmarksList"></div>
+      <div id="bookmarksList">
+        <div class="loading-state" id="loadingState" style="display: block;">
+          Loading bookmarks...
+        </div>
+        <div class="empty-state" id="emptyState" style="display: none;">
+          No bookmarks yet. Add some from YouTube!
+        </div>
+        <!-- Bookmarks will be injected here -->
+      </div>
     </div>
     <script type="module" src="popup.js"></script>
   </body>
@@ -2120,12 +2924,23 @@ document.addEventListener('DOMContentLoaded', () => {
   const searchInput = document.getElementById('searchInput');
   const shortcutToggle = document.getElementById('shortcutToggle');
   const sortSelect = document.getElementById('sortSelect');
+  const loadingState = document.getElementById('loadingState');
+  const emptyState = document.getElementById('emptyState');
+  const notificationArea = document.getElementById('notificationArea');
   let allBookmarks = []; // Store all bookmarks for filtering
-  const lazyLoadObserver = setupLazyLoading();
+  let currentSort = 'newest'; // Keep track of the current sort
+  const lazyLoadObserver = setupLazyLoading(); // Initialize the observer
+
+  // Key for storing folder collapsed states
+  const FOLDER_STATE_KEY = 'folderCollapsedStates';
 
   // Load shortcut setting
-  chrome.storage.sync.get(['shortcutEnabled'], (result) => {
+  chrome.storage.sync.get(['bookmarks', 'shortcutEnabled'], (result) => {
     shortcutToggle.checked = result.shortcutEnabled !== false; // Default to true
+    allBookmarks = result.bookmarks || [];
+    // Hide loading state and show bookmarks/empty state
+    loadingState.style.display = 'none';
+    filterBookmarks(searchInput.value);
   });
 
   // Save shortcut setting
@@ -2133,51 +2948,84 @@ document.addEventListener('DOMContentLoaded', () => {
     chrome.storage.sync.set({ shortcutEnabled: e.target.checked });
   });
 
-  function sortBookmarks(bookmarks, sortBy) {
-    return [...bookmarks].sort((a, b) => {
-      switch (sortBy) {
-        case 'newest':
-          return (
-            (b.savedAt || b.createdAt || 0) - (a.savedAt || a.createdAt || 0)
-          );
-
-        case 'oldest':
-          return (
-            (a.savedAt || a.createdAt || 0) - (b.savedAt || b.createdAt || 0)
-          );
-
-        case 'duration':
-          return b.timestamp - a.timestamp;
-
-        case 'title':
-          return a.videoTitle
-            .toLowerCase()
-            .localeCompare(b.videoTitle.toLowerCase());
-
-        default:
-          return 0;
+  // --- Grouping Logic ---
+  function groupBookmarksByVideo(bookmarks) {
+    const grouped = bookmarks.reduce((acc, bookmark) => {
+      const { videoId, videoTitle } = bookmark;
+      if (!acc[videoId]) {
+        acc[videoId] = {
+          title: videoTitle || 'Unknown Title', // Use stored title
+          bookmarks: [],
+          latestTimestamp: 0, // Track latest bookmark time for group sorting
+        };
       }
+      acc[videoId].bookmarks.push(bookmark);
+      // Keep track of the latest bookmark timestamp within the group
+      if (bookmark.createdAt > acc[videoId].latestTimestamp) {
+        acc[videoId].latestTimestamp = bookmark.createdAt;
+      }
+      return acc;
+    }, {});
+
+    // Sort bookmarks within each group by timestamp (ascending)
+    Object.values(grouped).forEach((group) => {
+      group.bookmarks.sort((a, b) => a.timestamp - b.timestamp);
     });
+
+    return grouped;
   }
 
+  // --- Sorting Logic ---
+  function sortBookmarkGroups(groupedBookmarks, sortBy) {
+    // Convert grouped object to an array for sorting
+    const groupsArray = Object.entries(groupedBookmarks).map(
+      ([videoId, data]) => ({ videoId, ...data })
+    );
+
+    groupsArray.sort((a, b) => {
+      switch (sortBy) {
+        case 'newest':
+          return b.latestTimestamp - a.latestTimestamp; // Sort groups by newest bookmark within
+        case 'oldest':
+          return a.latestTimestamp - b.latestTimestamp; // Sort groups by oldest bookmark within
+        case 'title': // New sort option: Alphabetical by video title
+          return a.title.localeCompare(b.title);
+        default:
+          return b.latestTimestamp - a.latestTimestamp; // Default to newest
+      }
+    });
+
+    return groupsArray; // Return sorted array of groups
+  }
+
+  // --- Rendering Logic ---
   function createBookmarkElement(bookmark, index) {
-    const thumbnailUrl = `https://i.ytimg.com/vi/${bookmark.videoId}/maxresdefault.jpg`;
+    const thumbnailUrl = `https://i.ytimg.com/vi/${bookmark.videoId}/hqdefault.jpg`; // Use hqdefault
     const div = document.createElement('div');
     div.className = 'bookmark';
-    const bookmarkId = bookmark.savedAt || bookmark.createdAt;
+    const bookmarkId = bookmark.id;
+    const notes = bookmark.notes || ''; // Get notes, default to empty string
+
+    // Determine a fallback thumbnail if needed (consider a local placeholder)
+    const finalThumbnailUrl = thumbnailUrl; // For now, just use the fetched one
 
     div.innerHTML = `
       <div class="timestamp-preview">
-        Saved on ${new Date(bookmarkId).toLocaleString(undefined, {
+        Saved on ${new Date(bookmark.createdAt).toLocaleString(undefined, {
           year: 'numeric',
           month: 'short',
           day: 'numeric',
           hour: '2-digit',
           minute: '2-digit',
-        })}
+        })} // Use createdAt for display
       </div>
       <div class="thumbnail-container">
-        <img class="thumbnail" data-src="${thumbnailUrl}" alt="Video thumbnail">
+        <img
+          class="thumbnail"
+          src="${finalThumbnailUrl}" /* Set src directly */
+          alt="Video thumbnail"
+        />
+        <div class="thumbnail-placeholder" style="background: #eee; height: 100%; width: 100%; text-align: center; line-height: 68px; color: #aaa; font-size: 12px;">No thumb</div>
         <div class="timestamp-badge">${formatTime(bookmark.timestamp)}</div>
       </div>
       <div class="bookmark-info">
@@ -2209,7 +3057,20 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
         </div>
       </div>
+      <div class="notes-container">
+        <textarea class="notes-textarea" data-bookmark-id="${bookmarkId}" placeholder="Add notes...">${notes}</textarea>
+      </div>
     `;
+
+    // Add error handler for the thumbnail image
+    const thumbnailImg = div.querySelector('.thumbnail');
+    const thumbnailPlaceholder = div.querySelector('.thumbnail-placeholder');
+    thumbnailImg.addEventListener('error', () => {
+      thumbnailImg.style.display = 'none';
+      if (thumbnailPlaceholder) {
+        thumbnailPlaceholder.style.display = 'block';
+      }
+    });
 
     // Add click handler for share button
     const shareBtn = div.querySelector('.share-btn');
@@ -2227,40 +3088,73 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
 
-    // Initialize lazy loading for the thumbnail
-    const thumbnail = div.querySelector('.thumbnail');
-    lazyLoadObserver.observe(thumbnail);
-
     return div;
   }
 
-  function updateBookmarksList(bookmarks) {
-    const sorted = sortBookmarks(bookmarks, sortSelect.value);
+  // Render the list of bookmarks, grouped by video
+  function renderBookmarkGroups(filteredBookmarks) {
+    bookmarksList.innerHTML = ''; // Clear previous list
 
-    if (sorted.length === 0) {
-      bookmarksList.innerHTML = `
-        <div class="empty-state">
-          No bookmarks yet! Click the bookmark button while watching a video to save timestamps.
-        </div>
-      `;
-      deleteAllBtn.disabled = true;
-      return;
+    if (filteredBookmarks.length === 0) {
+      const searchTerm = searchInput.value.trim();
+      emptyState.textContent =
+        searchTerm === ''
+          ? 'No bookmarks yet. Add some from YouTube!'
+          : 'No bookmarks match your search.';
+      emptyState.style.display = 'block'; // Show empty state
+      bookmarksList.style.display = 'none'; // Hide bookmark list container
+      deleteAllBtn.disabled = allBookmarks.length === 0;
+    } else {
+      emptyState.style.display = 'none';
+      bookmarksList.style.display = 'block';
+
+      const grouped = groupBookmarksByVideo(filteredBookmarks);
+      const sortedGroups = sortBookmarkGroups(grouped, sortSelect.value);
+
+      sortedGroups.forEach((group) => {
+        const groupDiv = document.createElement('div');
+        groupDiv.className = 'video-group collapsed';
+
+        const groupHeader = document.createElement('h3');
+        groupHeader.className = 'folder-header';
+        // Make title a link to the video (first bookmark's URL without timestamp)
+        const videoBaseUrl = group.bookmarks[0].url.split('&t=')[0];
+        groupHeader.textContent = group.title; // Use group.title directly
+        groupHeader.dataset.folderName = group.title; // Use group.title directly
+        groupHeader.addEventListener('click', () =>
+          toggleFolder(group.title, groupHeader)
+        ); // Use group.title directly
+
+        const bookmarksContainer = document.createElement('div');
+        bookmarksContainer.className = 'timestamp-list-container';
+
+        // Sort bookmarks within the folder by time added (descending - newest first)
+        const sortedBookmarks = group.bookmarks.sort(
+          (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
+        );
+
+        sortedBookmarks.forEach((bookmark, index) => {
+          const bookmarkElement = createBookmarkElement(bookmark, index);
+          bookmarksContainer.appendChild(bookmarkElement);
+        });
+        groupDiv.appendChild(groupHeader);
+        groupDiv.appendChild(bookmarksContainer);
+        bookmarksList.appendChild(groupDiv);
+      });
+
+      deleteAllBtn.disabled = allBookmarks.length === 0;
     }
-
-    deleteAllBtn.disabled = false;
-    bookmarksList.innerHTML = '';
-    sorted.forEach((bookmark, index) => {
-      bookmarksList.appendChild(createBookmarkElement(bookmark, index));
-    });
   }
 
+  // --- Filtering Logic ---
   function filterBookmarks(searchTerm) {
+    const lowerSearchTerm = searchTerm.toLowerCase();
     const filtered = searchTerm
       ? allBookmarks.filter((bookmark) =>
-          bookmark.videoTitle.toLowerCase().includes(searchTerm.toLowerCase())
+          bookmark.videoTitle.toLowerCase().includes(lowerSearchTerm)
         )
       : allBookmarks;
-    updateBookmarksList(filtered);
+    renderBookmarkGroups(filtered); // Update the list display using grouped rendering
   }
 
   // Use debounced search
@@ -2274,17 +3168,30 @@ document.addEventListener('DOMContentLoaded', () => {
     filterBookmarks(searchInput.value)
   );
 
-  deleteAllBtn.addEventListener('click', () => {
-    if (confirm('Are you sure you want to delete all bookmarks?')) {
-      chrome.storage.sync.set({ bookmarks: [] }, () => {
+  deleteAllBtn.addEventListener('click', async () => {
+    if (
+      window.confirm(
+        'Are you sure you want to delete ALL bookmarks? This cannot be undone.'
+      )
+    ) {
+      deleteAllBtn.disabled = true; // Disable while deleting
+      try {
+        await chrome.storage.sync.set({ bookmarks: [] });
         allBookmarks = [];
-        updateBookmarksList([]);
+        filterBookmarks('');
         showNotification('All bookmarks deleted');
-      });
+      } catch (error) {
+        console.error('Failed to delete all bookmarks:', error);
+        showNotification('Error deleting bookmarks', 'error');
+      } finally {
+        // Re-enable button only if there are bookmarks left (shouldn't happen here, but good practice)
+        deleteAllBtn.disabled = allBookmarks.length === 0;
+      }
     }
   });
 
   let lastDeletedBookmark = null;
+  let lastDeletedIndex = -1; // Store index for potential undo
 
   function showUndoNotification() {
     const notification = document.createElement('div');
@@ -2299,12 +3206,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const undoBtn = notification.querySelector('.undo-btn');
     undoBtn.addEventListener('click', async () => {
       if (lastDeletedBookmark) {
-        allBookmarks.push(lastDeletedBookmark);
+        // Re-insert at the original position if possible
+        if (lastDeletedIndex >= 0 && lastDeletedIndex <= allBookmarks.length) {
+          allBookmarks.splice(lastDeletedIndex, 0, lastDeletedBookmark);
+        } else {
+          allBookmarks.push(lastDeletedBookmark); // Fallback: add to end
+        }
         await chrome.storage.sync.set({ bookmarks: allBookmarks });
         filterBookmarks(searchInput.value);
         notification.remove();
         showNotification('Bookmark restored');
         lastDeletedBookmark = null;
+        lastDeletedIndex = -1;
       }
     });
 
@@ -2312,61 +3225,178 @@ document.addEventListener('DOMContentLoaded', () => {
       if (notification.parentNode) {
         notification.remove();
         lastDeletedBookmark = null;
+        lastDeletedIndex = -1;
       }
     }, 5000);
   }
 
-  async function deleteBookmark(deleteBtn, bookmarkId) {
-    try {
-      // Show loading state
-      const deleteIcon = deleteBtn.querySelector('.delete-icon');
-      const loadingSpinner = deleteBtn.querySelector('.loading-spinner');
-      deleteIcon.style.display = 'none';
-      loadingSpinner.style.display = 'block';
-      deleteBtn.disabled = true;
+  // More efficient delete function
+  async function deleteBookmark(bookmarkId) {
+    const indexToDelete = allBookmarks.findIndex((b) => b.id === bookmarkId);
 
-      const result = await chrome.storage.sync.get(['bookmarks']);
-      allBookmarks = result.bookmarks || [];
-      const indexToDelete = allBookmarks.findIndex(
-        (b) => (b.savedAt || b.createdAt) === parseInt(bookmarkId)
-      );
+    if (indexToDelete !== -1) {
+      lastDeletedBookmark = allBookmarks[indexToDelete];
+      lastDeletedIndex = indexToDelete; // Store index before splicing
+      allBookmarks.splice(indexToDelete, 1);
 
-      if (indexToDelete !== -1) {
-        lastDeletedBookmark = allBookmarks[indexToDelete];
-        allBookmarks.splice(indexToDelete, 1);
+      try {
         await chrome.storage.sync.set({ bookmarks: allBookmarks });
-        filterBookmarks(searchInput.value);
-        showUndoNotification();
+        filterBookmarks(searchInput.value); // Update the UI immediately
+        showUndoNotification(); // Show undo option
+      } catch (error) {
+        // If saving fails, revert the change in memory and notify user
+        console.error('Failed to save deletion:', error);
+        if (lastDeletedBookmark) {
+          allBookmarks.splice(lastDeletedIndex, 0, lastDeletedBookmark); // Put it back
+          filterBookmarks(searchInput.value); // Update UI again
+        }
+        showNotification('Failed to delete bookmark', 'error');
+        lastDeletedBookmark = null; // Clear undo state
+        lastDeletedIndex = -1;
       }
-    } catch (error) {
-      console.error('Failed to delete bookmark:', error);
-      showNotification('Failed to delete bookmark', 'error');
-      // Reset button state
-      const deleteIcon = deleteBtn.querySelector('.delete-icon');
-      const loadingSpinner = deleteBtn.querySelector('.loading-spinner');
-      deleteIcon.style.display = 'block';
-      loadingSpinner.style.display = 'none';
-      deleteBtn.disabled = false;
+    } else {
+      console.warn('Bookmark ID not found for deletion:', bookmarkId);
+      showNotification('Could not find bookmark to delete', 'error');
     }
   }
 
-  bookmarksList.addEventListener('click', (e) => {
-    const deleteBtn = e.target.closest('.delete-btn');
-    if (deleteBtn && !deleteBtn.disabled) {
-      const bookmarkId = deleteBtn.dataset.bookmarkId;
-      deleteBookmark(deleteBtn, bookmarkId);
+  // --- Add Notes Save Listener (Debounced) ---
+  const debouncedSaveNote = debounce(async (bookmarkId, newNotes) => {
+    try {
+      const result = await chrome.storage.sync.get('bookmarks');
+      const bookmarks = result.bookmarks || [];
+      const bookmarkIndex = bookmarks.findIndex((b) => b.id === bookmarkId);
+
+      if (bookmarkIndex !== -1) {
+        bookmarks[bookmarkIndex].notes = newNotes;
+        await chrome.storage.sync.set({ bookmarks });
+        console.log(`Note saved for bookmark: ${bookmarkId}`);
+        // Optional: Show a subtle save indicator
+      } else {
+        console.error('Bookmark not found for saving note:', bookmarkId);
+      }
+    } catch (error) {
+      console.error('Error saving note:', error);
+      showNotification('Error saving note', 'error');
+    }
+  }, 500); // Save 500ms after user stops typing
+
+  bookmarksList.addEventListener('input', (e) => {
+    const textarea = e.target.closest('.notes-textarea');
+    if (textarea) {
+      const bookmarkId = textarea.dataset.bookmarkId;
+      const newNotes = textarea.value;
+      debouncedSaveNote(bookmarkId, newNotes);
+
+      // Auto-resize textarea height
+      textarea.style.height = 'auto'; // Reset height
+      textarea.style.height = `${textarea.scrollHeight}px`;
     }
   });
 
-  // Initial load
-  chrome.storage.sync.get(['bookmarks'], (result) => {
-    console.log('Loading bookmarks:', result.bookmarks);
-    if (result.bookmarks) {
-      allBookmarks = result.bookmarks;
-      updateBookmarksList(allBookmarks);
-    } else {
-      updateBookmarksList([]);
+  // --- Initialize Textarea Heights on Render ---
+  // We need to ensure heights are set after elements are in the DOM
+  // This can be tricky with async rendering. A MutationObserver is robust.
+  const resizeObserver = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      if (mutation.type === 'childList') {
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeType === 1 && node.classList.contains('bookmark')) {
+            const textarea = node.querySelector('.notes-textarea');
+            if (textarea) {
+              textarea.style.height = 'auto';
+              textarea.style.height = `${textarea.scrollHeight}px`;
+            }
+          }
+          // Also handle cases where the whole group is added
+          if (node.nodeType === 1 && node.classList.contains('video-group')) {
+            node.querySelectorAll('.notes-textarea').forEach((textarea) => {
+              textarea.style.height = 'auto';
+              textarea.style.height = `${textarea.scrollHeight}px`;
+            });
+          }
+        });
+      }
     }
+  });
+
+  resizeObserver.observe(bookmarksList, { childList: true, subtree: true });
+
+  bookmarksList.addEventListener('click', (e) => {
+    const groupTitle = e.target.closest('.folder-header');
+    if (groupTitle) {
+      e.preventDefault(); // Prevent default anchor tag behavior if title is a link
+      const groupDiv = groupTitle.closest('.video-group');
+      if (groupDiv) {
+        groupDiv.classList.toggle('collapsed');
+      }
+    }
+
+    // Handle delete button clicks (existing logic)
+    const deleteBtn = e.target.closest('.delete-btn');
+    if (deleteBtn && !deleteBtn.disabled) {
+      const bookmarkId = deleteBtn.dataset.bookmarkId;
+      if (bookmarkId) {
+        // Show loading spinner on the specific button
+        const icon = deleteBtn.querySelector('.delete-icon');
+        const spinner = deleteBtn.querySelector('.loading-spinner');
+        if (icon) icon.style.display = 'none';
+        if (spinner) spinner.style.display = 'inline-block';
+        deleteBtn.disabled = true; // Disable button during delete
+
+        deleteBookmark(bookmarkId).finally(() => {
+          // Restore button state regardless of success/failure
+          if (icon) icon.style.display = 'inline-block';
+          if (spinner) spinner.style.display = 'none';
+          // Re-enable might happen automatically if the element is removed,
+          // but good practice to handle it if deletion fails.
+          // The element might not exist anymore if deletion was successful.
+          const stillExistingBtn = document.querySelector(
+            `.delete-btn[data-bookmark-id="${bookmarkId}"]`
+          );
+          if (stillExistingBtn) {
+            stillExistingBtn.disabled = false;
+          }
+        });
+      }
+    }
+  });
+
+  // Initial call to display bookmarks
+  // chrome.storage.sync.get('bookmarks', (data) => {
+  //     allBookmarks = data.bookmarks || [];
+
+  //     renderBookmarkGroups(allBookmarks);
+  // });
+
+  // --- New function to toggle folder visibility ---
+  async function toggleFolder(folderName, headerElement) {
+    const listContainer = headerElement.nextElementSibling; // The timestamp list container
+    const isCollapsed = headerElement.classList.toggle('collapsed');
+
+    // Update display
+    listContainer.style.display = isCollapsed ? 'none' : 'block';
+
+    // Update and save state
+    const stateResult = await chrome.storage.local.get(FOLDER_STATE_KEY);
+    const folderStates = stateResult[FOLDER_STATE_KEY] || {};
+    folderStates[folderName] = isCollapsed;
+    await chrome.storage.local.set({ [FOLDER_STATE_KEY]: folderStates });
+    console.log('Folder states updated:', folderStates);
+  }
+  // --- End of new function ---
+
+  // Load folder states
+  chrome.storage.local.get(FOLDER_STATE_KEY, (result) => {
+    const folderStates = result[FOLDER_STATE_KEY] || {};
+    const folderHeaders = bookmarksList.querySelectorAll('.folder-header');
+    folderHeaders.forEach((header) => {
+      const folderName = header.dataset.folderName;
+      if (folderStates[folderName]) {
+        header.classList.add('collapsed');
+        header.nextElementSibling.style.display = 'none';
+      }
+    });
   });
 });
 </file>
