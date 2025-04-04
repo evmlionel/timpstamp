@@ -1,0 +1,40 @@
+/* Styles for elements injected by the content script */
+
+.ytb-bookmark-btn {
+  /* Ensure the bookmark icon is visible */
+  fill: currentColor;
+  /* Add subtle hover effect if desired */
+  transition: opacity 0.2s ease-in-out;
+}
+
+.ytb-bookmark-btn:hover {
+  opacity: 0.8;
+}
+
+.ytb-notification {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  /* Use YouTube's theme variables for better integration */
+  background: var(--yt-spec-brand-background-primary, #0f0f0f);
+  color: var(--yt-spec-text-primary, #fff);
+  padding: 12px 24px;
+  border-radius: 4px;
+  z-index: 999999; /* High z-index to appear above most elements */
+  font-family: "YouTube Sans","Roboto",sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 32px rgba(0,0,0,0.4);
+  border: 1px solid var(--yt-spec-10-percent-layer, rgba(255, 255, 255, 0.1));
+  pointer-events: none; /* Don't interfere with clicks */
+  opacity: 1;
+  transition: opacity 0.5s ease-out;
+}
+
+/* Fade out effect can be added if needed */
+/*
+.ytb-notification.fade-out {
+  opacity: 0;
+}
+*/

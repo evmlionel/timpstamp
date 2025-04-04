@@ -6,7 +6,7 @@
   "permissions": [
     "storage",
     "activeTab",
-    "scripting"
+    "alarms"
   ],
   "host_permissions": [
     "*://*.youtube.com/*"
@@ -22,13 +22,8 @@
     {
       "matches": ["*://*.youtube.com/*"],
       "js": ["content.js"],
+      "css": ["content.css"],
       "run_at": "document_idle"
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": ["popup.html", "popup.js"],
-      "matches": ["*://*.youtube.com/*"]
     }
   ],
   "icons": {

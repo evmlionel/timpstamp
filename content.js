@@ -2,17 +2,23 @@
 console.log('Timpstamp Extension Loaded');
 
 let currentVideoId = null;
-let port = null;
+let shortcutEnabled = true; // Default to enabled, will be updated from storage
 
-// Connect to background script
-function connectToBackground() {
-  try {
-    port = chrome.runtime.connect({ name: 'timpstamp' });
-    console.log('Connected to background script');
-  } catch (error) {
-    console.error('Failed to connect to background:', error);
-  }
+// Function to load initial shortcut setting
+function loadShortcutSetting() {
+  chrome.storage.sync.get('shortcutEnabled', (result) => {
+    shortcutEnabled = result.shortcutEnabled !== false; // Default true if undefined
+    console.log('Shortcut setting loaded:', shortcutEnabled);
+  });
 }
+
+// Listen for changes in storage (e.g., when changed via popup)
+chrome.storage.onChanged.addListener((changes, namespace) => {
+  if (namespace === 'sync' && changes.shortcutEnabled) {
+    shortcutEnabled = changes.shortcutEnabled.newValue !== false;
+    console.log('Shortcut setting updated:', shortcutEnabled);
+  }
+});
 
 // Save timestamp
 function saveTimestamp() {
@@ -34,6 +40,17 @@ function saveTimestamp() {
     const minutes = Math.floor((currentTime % 3600) / 60);
     const seconds = currentTime % 60;
 
+    // More robust title extraction
+    let videoTitle = 'Unknown Title';
+    const titleElement = document.querySelector('h1.ytd-watch-metadata #title, h1.title.ytd-video-primary-info-renderer'); // Add fallback selector
+    if (titleElement && titleElement.textContent) {
+      videoTitle = titleElement.textContent.trim();
+    } else {
+      // Fallback to document title if specific element not found
+      videoTitle = document.title.split(' - YouTube')[0].trim();
+      console.warn('Could not find specific title element, using document.title as fallback.');
+    }
+
     const formattedTime =
       hours > 0
         ? `${hours}:${minutes.toString().padStart(2, '0')}:${seconds
@@ -43,7 +60,7 @@ function saveTimestamp() {
 
     const bookmark = {
       videoId,
-      videoTitle: document.title.split(' - YouTube')[0].trim(),
+      videoTitle: videoTitle,
       timestamp: currentTime,
       formattedTime,
       url: `https://youtube.com/watch?v=${videoId}&t=${currentTime}s`,
@@ -59,8 +76,6 @@ function saveTimestamp() {
         if (chrome.runtime.lastError) {
           console.error('Failed to save bookmark:', chrome.runtime.lastError);
           showNotification('Failed to save timestamp ❌');
-          // Try to reconnect
-          connectToBackground();
           return;
         }
 
@@ -80,31 +95,15 @@ function saveTimestamp() {
 // Show notification
 function showNotification(message) {
   try {
-    const existing = document.querySelector('.yt-timestamp-notification');
+    const existing = document.querySelector('.ytb-notification'); // Use new class
     if (existing) {
       existing.remove();
     }
 
     const notification = document.createElement('div');
-    notification.className = 'yt-timestamp-notification';
+    notification.className = 'ytb-notification'; // Use new class
     notification.textContent = message;
-    notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--yt-spec-brand-background-primary, #0f0f0f);
-            color: var(--yt-spec-text-primary, #fff);
-            padding: 12px 24px;
-            border-radius: 4px;
-            z-index: 999999;
-            font-family: "YouTube Sans","Roboto",sans-serif;
-            font-size: 14px;
-            font-weight: 500;
-            box-shadow: 0 4px 32px rgba(0,0,0,0.4);
-            border: 1px solid var(--yt-spec-10-percent-layer, #ffffff1a);
-            pointer-events: none;
-        `;
+    // Styles are now applied via content.css
 
     document.body.appendChild(notification);
     setTimeout(() => {
@@ -120,7 +119,7 @@ function showNotification(message) {
 // Create bookmark button
 function createButton() {
   const button = document.createElement('button');
-  button.className = 'ytp-button timpstamp-btn';
+  button.className = 'ytp-button ytb-bookmark-btn'; // Use new class
   button.title = 'Save timestamp (B)';
   button.innerHTML = `
         <svg height="100%" version="1.1" viewBox="0 0 24 24" width="100%">
@@ -140,7 +139,7 @@ function createButton() {
 // Add bookmark button to player
 function addBookmarkButton() {
   try {
-    if (document.querySelector('.timpstamp-btn')) return;
+    if (document.querySelector('.ytb-bookmark-btn')) return;
 
     const rightControls = document.querySelector('.ytp-right-controls');
     if (!rightControls) return;
@@ -156,6 +155,9 @@ function addBookmarkButton() {
 // Handle keyboard shortcut
 function handleKeyPress(event) {
   try {
+    // Check if shortcut is enabled
+    if (!shortcutEnabled) return;
+
     if (
       event.target.tagName === 'INPUT' ||
       event.target.tagName === 'TEXTAREA' ||
@@ -185,8 +187,8 @@ function initialize() {
   try {
     console.log('Initializing extension...');
 
-    // Connect to background script
-    connectToBackground();
+    // Load initial shortcut setting
+    loadShortcutSetting();
 
     const videoId = new URLSearchParams(window.location.search).get('v');
     if (!videoId || videoId === currentVideoId) return;
@@ -194,7 +196,7 @@ function initialize() {
     console.log('New video detected:', videoId);
     currentVideoId = videoId;
 
-    const existingButton = document.querySelector('.timpstamp-btn');
+    const existingButton = document.querySelector('.ytb-bookmark-btn');
     if (existingButton) {
       existingButton.remove();
     }
@@ -210,7 +212,7 @@ try {
   // Watch for player changes
   const observer = new MutationObserver(() => {
     try {
-      if (!document.querySelector('.timpstamp-btn')) {
+      if (!document.querySelector('.ytb-bookmark-btn')) {
         const controls = document.querySelector('.ytp-right-controls');
         if (controls) {
           addBookmarkButton();
