@@ -21,14 +21,51 @@ document.addEventListener('DOMContentLoaded', () => {
   // Key for storing folder collapsed states
   const FOLDER_STATE_KEY = 'folderCollapsedStates';
 
-  // Load shortcut setting
-  chrome.storage.sync.get(['bookmarks', 'shortcutEnabled'], (result) => {
-    shortcutToggle.checked = result.shortcutEnabled !== false; // Default to true
-    allBookmarks = result.bookmarks || [];
-    // Hide loading state and show bookmarks/empty state
-    loadingState.style.display = 'none';
-    filterBookmarks(searchInput.value);
-  });
+  // Load shortcut setting and bookmarks
+  async function loadAllData() {
+    try {
+      // First get the shortcut setting
+      const settingResult = await chrome.storage.sync.get(['shortcutEnabled']);
+      shortcutToggle.checked = settingResult.shortcutEnabled !== false; // Default to true
+      
+      // Then get the bookmark index
+      const indexResult = await chrome.storage.sync.get('bookmarkIndex');
+      const bookmarkIndex = indexResult.bookmarkIndex || { totalCount: 0, chunks: [] };
+      
+      if (bookmarkIndex.totalCount === 0) {
+        allBookmarks = [];
+        loadingState.style.display = 'none';
+        filterBookmarks(searchInput.value);
+        return;
+      }
+      
+      // Get all chunks
+      const BOOKMARK_CHUNK_PREFIX = 'bookmarks_chunk_';
+      const chunkKeys = bookmarkIndex.chunks.map(chunkId => `${BOOKMARK_CHUNK_PREFIX}${chunkId}`);
+      const chunksResult = await chrome.storage.sync.get(chunkKeys);
+      
+      // Combine all bookmarks from chunks
+      allBookmarks = [];
+      bookmarkIndex.chunks.forEach(chunkId => {
+        const chunkKey = `${BOOKMARK_CHUNK_PREFIX}${chunkId}`;
+        if (chunksResult[chunkKey]) {
+          allBookmarks = allBookmarks.concat(chunksResult[chunkKey]);
+        }
+      });
+      
+      // Hide loading state and show bookmarks/empty state
+      loadingState.style.display = 'none';
+      filterBookmarks(searchInput.value);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      loadingState.style.display = 'none';
+      emptyState.textContent = 'Error loading bookmarks. Please try again.';
+      emptyState.style.display = 'block';
+    }
+  }
+  
+  // Start loading data
+  loadAllData();
 
   // Save shortcut setting
   shortcutToggle.addEventListener('change', (e) => {
@@ -263,7 +300,27 @@ document.addEventListener('DOMContentLoaded', () => {
     ) {
       deleteAllBtn.disabled = true; // Disable while deleting
       try {
-        await chrome.storage.sync.set({ bookmarks: [] });
+        // Get the bookmark index to find all chunks
+        const BOOKMARK_CHUNK_PREFIX = 'bookmarks_chunk_';
+        const indexResult = await chrome.storage.sync.get('bookmarkIndex');
+        const bookmarkIndex = indexResult.bookmarkIndex || { totalCount: 0, chunks: [] };
+        
+        // Create a list of all keys to remove
+        const keysToRemove = bookmarkIndex.chunks.map(chunkId => `${BOOKMARK_CHUNK_PREFIX}${chunkId}`);
+        
+        // Remove all chunks
+        if (keysToRemove.length > 0) {
+          await chrome.storage.sync.remove(keysToRemove);
+        }
+        
+        // Reset the bookmark index
+        await chrome.storage.sync.set({
+          bookmarkIndex: {
+            totalCount: 0,
+            chunks: []
+          }
+        });
+        
         allBookmarks = [];
         filterBookmarks('');
         showNotification('All bookmarks deleted');
@@ -299,12 +356,46 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           allBookmarks.push(lastDeletedBookmark); // Fallback: add to end
         }
-        await chrome.storage.sync.set({ bookmarks: allBookmarks });
-        filterBookmarks(searchInput.value);
-        notification.remove();
-        showNotification('Bookmark restored');
-        lastDeletedBookmark = null;
-        lastDeletedIndex = -1;
+        
+        try {
+          // Get all bookmarks from chunked storage
+          const BOOKMARK_CHUNK_PREFIX = 'bookmarks_chunk_';
+          const BOOKMARK_CHUNK_SIZE = 100; // Must match background.js
+          
+          // Reorganize all bookmarks into chunks
+          const chunkCount = Math.ceil(allBookmarks.length / BOOKMARK_CHUNK_SIZE);
+          const newChunks = [];
+          
+          // Create new chunks
+          for (let i = 0; i < chunkCount; i++) {
+            const chunkId = i.toString();
+            const chunkKey = `${BOOKMARK_CHUNK_PREFIX}${chunkId}`;
+            const startIndex = i * BOOKMARK_CHUNK_SIZE;
+            const endIndex = Math.min(startIndex + BOOKMARK_CHUNK_SIZE, allBookmarks.length);
+            const chunkBookmarks = allBookmarks.slice(startIndex, endIndex);
+            
+            // Save this chunk
+            await chrome.storage.sync.set({ [chunkKey]: chunkBookmarks });
+            newChunks.push(chunkId);
+          }
+          
+          // Update the bookmark index
+          await chrome.storage.sync.set({
+            bookmarkIndex: {
+              totalCount: allBookmarks.length,
+              chunks: newChunks
+            }
+          });
+          
+          filterBookmarks(searchInput.value);
+          notification.remove();
+          showNotification('Bookmark restored');
+          lastDeletedBookmark = null;
+          lastDeletedIndex = -1;
+        } catch (error) {
+          console.error('Error restoring bookmark:', error);
+          showNotification('Failed to restore bookmark', 'error');
+        }
       }
     });
 
@@ -327,7 +418,47 @@ document.addEventListener('DOMContentLoaded', () => {
       allBookmarks.splice(indexToDelete, 1);
 
       try {
-        await chrome.storage.sync.set({ bookmarks: allBookmarks });
+        // Get all bookmarks from chunked storage
+        const BOOKMARK_CHUNK_PREFIX = 'bookmarks_chunk_';
+        const BOOKMARK_CHUNK_SIZE = 100; // Must match background.js
+        
+        // Reorganize all bookmarks into chunks
+        const chunkCount = Math.ceil(allBookmarks.length / BOOKMARK_CHUNK_SIZE);
+        const newChunks = [];
+        
+        // Create new chunks
+        for (let i = 0; i < chunkCount; i++) {
+          const chunkId = i.toString();
+          const chunkKey = `${BOOKMARK_CHUNK_PREFIX}${chunkId}`;
+          const startIndex = i * BOOKMARK_CHUNK_SIZE;
+          const endIndex = Math.min(startIndex + BOOKMARK_CHUNK_SIZE, allBookmarks.length);
+          const chunkBookmarks = allBookmarks.slice(startIndex, endIndex);
+          
+          // Save this chunk
+          await chrome.storage.sync.set({ [chunkKey]: chunkBookmarks });
+          newChunks.push(chunkId);
+        }
+        
+        // Get the old index to find chunks that need to be removed
+        const indexResult = await chrome.storage.sync.get('bookmarkIndex');
+        const oldIndex = indexResult.bookmarkIndex || { totalCount: 0, chunks: [] };
+        
+        // Clean up any old chunks that are no longer needed
+        const chunksToRemove = oldIndex.chunks.filter(id => !newChunks.includes(id))
+          .map(id => `${BOOKMARK_CHUNK_PREFIX}${id}`);
+        
+        if (chunksToRemove.length > 0) {
+          await chrome.storage.sync.remove(chunksToRemove);
+        }
+        
+        // Update the bookmark index
+        await chrome.storage.sync.set({
+          bookmarkIndex: {
+            totalCount: allBookmarks.length,
+            chunks: newChunks
+          }
+        });
+        
         filterBookmarks(searchInput.value); // Update the UI immediately
         showUndoNotification(); // Show undo option
       } catch (error) {
@@ -350,18 +481,46 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Add Notes Save Listener (Debounced) ---
   const debouncedSaveNote = debounce(async (bookmarkId, newNotes) => {
     try {
-      const result = await chrome.storage.sync.get('bookmarks');
-      const bookmarks = result.bookmarks || [];
-      const bookmarkIndex = bookmarks.findIndex((b) => b.id === bookmarkId);
-
-      if (bookmarkIndex !== -1) {
-        bookmarks[bookmarkIndex].notes = newNotes;
-        await chrome.storage.sync.set({ bookmarks });
-        console.log(`Note saved for bookmark: ${bookmarkId}`);
-        // Optional: Show a subtle save indicator
-      } else {
-        console.error('Bookmark not found for saving note:', bookmarkId);
+      // Get all bookmarks from chunked storage
+      const BOOKMARK_CHUNK_PREFIX = 'bookmarks_chunk_';
+      const indexResult = await chrome.storage.sync.get('bookmarkIndex');
+      const bookmarkIndex = indexResult.bookmarkIndex || { totalCount: 0, chunks: [] };
+      
+      if (bookmarkIndex.totalCount === 0) {
+        console.error('No bookmarks found');
+        return;
       }
+      
+      // Find which chunk contains this bookmark
+      let foundInChunk = null;
+      
+      // Check each chunk
+      for (const chunkId of bookmarkIndex.chunks) {
+        const chunkKey = `${BOOKMARK_CHUNK_PREFIX}${chunkId}`;
+        const chunkResult = await chrome.storage.sync.get(chunkKey);
+        const chunkBookmarks = chunkResult[chunkKey] || [];
+        
+        const bookmarkInChunkIndex = chunkBookmarks.findIndex(b => b.id === bookmarkId);
+        if (bookmarkInChunkIndex !== -1) {
+          // Update the bookmark in this chunk
+          chunkBookmarks[bookmarkInChunkIndex].notes = newNotes;
+          
+          // Save the updated chunk
+          await chrome.storage.sync.set({ [chunkKey]: chunkBookmarks });
+          
+          // Also update our local copy
+          const localIndex = allBookmarks.findIndex((b) => b.id === bookmarkId);
+          if (localIndex !== -1) {
+            allBookmarks[localIndex].notes = newNotes;
+          }
+          
+          console.log(`Note saved for bookmark: ${bookmarkId}`);
+          return; // Exit after saving
+        }
+      }
+      
+      // If we get here, the bookmark wasn't found
+      console.error('Bookmark not found for saving note:', bookmarkId);
     } catch (error) {
       console.error('Error saving note:', error);
       showNotification('Error saving note', 'error');
