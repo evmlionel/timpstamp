@@ -18,6 +18,28 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentSort = 'newest'; // Keep track of the current sort
   const lazyLoadObserver = setupLazyLoading(); // Initialize the observer
 
+  // Event listener for Clear All button
+  deleteAllBtn.addEventListener('click', async () => {
+    if (window.confirm("Are you sure you want to delete all timestamps? This action cannot be undone.")) {
+      chrome.runtime.sendMessage({ type: 'CLEAR_ALL_BOOKMARKS' }, (response) => {
+        if (chrome.runtime.lastError) {
+          console.error('Error clearing bookmarks:', chrome.runtime.lastError.message);
+          showNotification('Error clearing bookmarks. Please try again.', 'error', notificationArea);
+          return;
+        }
+        if (response && response.success) {
+          allBookmarks = []; // Clear local cache
+          filterBookmarks(''); // Refresh the UI to show empty state
+          showNotification('All timestamps cleared successfully!', 'success', notificationArea);
+        } else {
+          const errorMessage = response && response.error ? response.error : 'Failed to clear bookmarks.';
+          console.error('Failed to clear bookmarks:', errorMessage);
+          showNotification(errorMessage, 'error', notificationArea);
+        }
+      });
+    }
+  });
+
   // Key for storing folder collapsed states
   const FOLDER_STATE_KEY = 'folderCollapsedStates';
 
@@ -291,48 +313,6 @@ document.addEventListener('DOMContentLoaded', () => {
   sortSelect.addEventListener('change', () =>
     filterBookmarks(searchInput.value)
   );
-
-  deleteAllBtn.addEventListener('click', async () => {
-    if (
-      window.confirm(
-        'Are you sure you want to delete ALL bookmarks? This cannot be undone.'
-      )
-    ) {
-      deleteAllBtn.disabled = true; // Disable while deleting
-      try {
-        // Get the bookmark index to find all chunks
-        const BOOKMARK_CHUNK_PREFIX = 'bookmarks_chunk_';
-        const indexResult = await chrome.storage.sync.get('bookmarkIndex');
-        const bookmarkIndex = indexResult.bookmarkIndex || { totalCount: 0, chunks: [] };
-        
-        // Create a list of all keys to remove
-        const keysToRemove = bookmarkIndex.chunks.map(chunkId => `${BOOKMARK_CHUNK_PREFIX}${chunkId}`);
-        
-        // Remove all chunks
-        if (keysToRemove.length > 0) {
-          await chrome.storage.sync.remove(keysToRemove);
-        }
-        
-        // Reset the bookmark index
-        await chrome.storage.sync.set({
-          bookmarkIndex: {
-            totalCount: 0,
-            chunks: []
-          }
-        });
-        
-        allBookmarks = [];
-        filterBookmarks('');
-        showNotification('All bookmarks deleted');
-      } catch (error) {
-        console.error('Failed to delete all bookmarks:', error);
-        showNotification('Error deleting bookmarks', 'error');
-      } finally {
-        // Re-enable button only if there are bookmarks left (shouldn't happen here, but good practice)
-        deleteAllBtn.disabled = allBookmarks.length === 0;
-      }
-    }
-  });
 
   let lastDeletedBookmark = null;
   let lastDeletedIndex = -1; // Store index for potential undo

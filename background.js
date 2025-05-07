@@ -52,6 +52,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.type === 'ADD_BOOKMARK') {
     handleAddBookmark(request.data, sendResponse);
     return true; // Will respond asynchronously
+  } else if (request.type === 'CLEAR_ALL_BOOKMARKS') {
+    handleClearAllBookmarks(sendResponse);
+    return true; // Will respond asynchronously
   }
 });
 
@@ -198,6 +201,23 @@ async function handleAddBookmark(bookmarkData, sendResponse) {
       success: false,
       error: error.message,
     });
+  }
+}
+
+// Handle clearing all bookmarks
+async function handleClearAllBookmarks(sendResponse) {
+  try {
+    const success = await saveAllBookmarks([]); // Save an empty array
+    if (success) {
+      console.log('All bookmarks cleared successfully.');
+      sendResponse({ success: true });
+    } else {
+      console.error('Failed to clear all bookmarks during save operation.');
+      sendResponse({ success: false, error: 'Failed to clear all bookmarks.' });
+    }
+  } catch (error) {
+    console.error('Error clearing all bookmarks:', error);
+    sendResponse({ success: false, error: error.message });
   }
 }
 
