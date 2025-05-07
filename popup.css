@@ -104,6 +104,7 @@ h2 {
   overflow: hidden;
   flex-shrink: 0;
   background-color: #f0f0f0;
+  position: relative;
 }
 
 .thumbnail {
