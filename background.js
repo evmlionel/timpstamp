@@ -141,28 +141,39 @@ async function handleAddBookmark(bookmarkData, sendResponse) {
     return;
   }
 
-  // Create a unique ID for the bookmark
-  const bookmarkId = `${bookmarkData.videoId}_${bookmarkData.timestamp}`;
+  const videoIdForBookmark = bookmarkData.videoId; // Use videoId as the unique identifier
 
   try {
-    // Get all bookmarks from chunked storage
     const bookmarks = await getAllBookmarks();
 
-    // Check if a bookmark with the exact same ID already exists
-    const existingIndex = bookmarks.findIndex((b) => b.id === bookmarkId);
+    // Check if a bookmark for this videoId already exists
+    const existingBookmarkIndex = bookmarks.findIndex(
+      (b) => b.id === videoIdForBookmark // Assuming 'id' will now store just the videoId
+    );
 
-    if (existingIndex >= 0) {
-      // Bookmark for this exact video and timestamp already exists
-      console.log('Bookmark already exists:', bookmarkId);
-      sendResponse({ success: false, error: 'Bookmark already exists' });
-      return; // Don't add duplicates
+    if (existingBookmarkIndex !== -1) {
+      // Update existing bookmark
+      bookmarks[existingBookmarkIndex] = {
+        ...bookmarks[existingBookmarkIndex], // Preserve existing fields like notes, original createdAt
+        videoTitle: bookmarkData.videoTitle, // Update title in case it changed
+        timestamp: bookmarkData.timestamp,
+        formattedTime: bookmarkData.formattedTime,
+        url: bookmarkData.url,
+        // videoId is part of bookmarkData and will be spread via ...bookmarkData if not explicitly listed
+        // Ensure videoId from bookmarkData is used if it's part of the spread
+        videoId: bookmarkData.videoId, 
+        savedAt: Date.now(), // Update the savedAt/updatedAt timestamp
+      };
+      console.log('Updated existing bookmark:', videoIdForBookmark);
+      // The 'id' field is already videoIdForBookmark due to the findIndex and preservation logic
     } else {
-      // Add new bookmark with unique ID
+      // Add new bookmark
       const newBookmark = {
-        ...bookmarkData,
-        id: bookmarkId, // Store the unique ID
-        createdAt: Date.now(), // Keep track of creation time
-        notes: '', // Add an empty notes field
+        ...bookmarkData, // Contains videoId, videoTitle, timestamp, formattedTime, url
+        id: videoIdForBookmark, // Set id to videoId
+        createdAt: Date.now(),   // Timestamp for when it was first bookmarked
+        savedAt: Date.now(),     // Timestamp for this specific save/update
+        notes: '',             // Initialize notes
       };
       bookmarks.push(newBookmark);
       console.log('Added new bookmark:', newBookmark);
@@ -171,14 +182,18 @@ async function handleAddBookmark(bookmarkData, sendResponse) {
     // Save updated bookmarks using chunking
     const saveResult = await saveAllBookmarks(bookmarks);
     if (saveResult) {
-      console.log('Bookmark saved successfully');
-      sendResponse({ success: true });
+      console.log('Bookmark operation successful for video:', videoIdForBookmark);
+      // Send a more specific message
+      sendResponse({ 
+        success: true, 
+        message: existingBookmarkIndex !== -1 ? 'Timestamp updated! 🎉' : 'Timestamp saved! 🎉' 
+      });
     } else {
-      console.error('Failed to save bookmark');
-      sendResponse({ success: false, error: 'Failed to save bookmark' });
+      console.error('Failed to save bookmark changes for video:', videoIdForBookmark);
+      sendResponse({ success: false, error: 'Failed to save bookmark changes' });
     }
   } catch (error) {
-    console.error('Error processing bookmark:', error);
+    console.error('Error processing bookmark for video:', videoIdForBookmark, error);
     sendResponse({
       success: false,
       error: error.message,

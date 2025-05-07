@@ -88,9 +88,9 @@ function saveTimestamp() {
         }
 
         if (response && response.success) {
-          showNotification('Timestamp saved! 🎉');
+          showNotification(response.message || 'Timestamp saved! 🎉');
         } else {
-          showNotification('Failed to save timestamp ❌');
+          showNotification(response && response.error ? response.error : 'Failed to save timestamp ❌');
         }
       }
     );
