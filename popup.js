@@ -14,70 +14,86 @@ document.addEventListener('DOMContentLoaded', () => {
   const loadingState = document.getElementById('loadingState');
   const emptyState = document.getElementById('emptyState');
   const notificationArea = document.getElementById('notificationArea');
-  let allBookmarks = []; // Store all bookmarks for filtering
-  let currentSort = 'newest'; // Keep track of the current sort
-  const lazyLoadObserver = setupLazyLoading(); // Initialize the observer
+  let allBookmarks = []; // Store all bookmarks for filtering/sorting
+  let currentSort = 'newest'; // Default sort
 
-  // Event listener for Clear All button
+  // Event listener for Clear All button (existing)
   deleteAllBtn.addEventListener('click', async () => {
-    if (window.confirm("Are you sure you want to delete all timestamps? This action cannot be undone.")) {
-      chrome.runtime.sendMessage({ type: 'CLEAR_ALL_BOOKMARKS' }, (response) => {
-        if (chrome.runtime.lastError) {
-          console.error('Error clearing bookmarks:', chrome.runtime.lastError.message);
-          showNotification('Error clearing bookmarks. Please try again.', 'error', notificationArea);
-          return;
+    if (
+      window.confirm(
+        'Are you sure you want to delete all timestamps? This action cannot be undone.'
+      )
+    ) {
+      chrome.runtime.sendMessage(
+        { type: 'CLEAR_ALL_BOOKMARKS' },
+        (response) => {
+          if (chrome.runtime.lastError) {
+            console.error(
+              'Error clearing bookmarks:',
+              chrome.runtime.lastError.message
+            );
+            showNotification(
+              'Error clearing bookmarks. Please try again.',
+              'error',
+              notificationArea
+            );
+            return;
+          }
+          if (response && response.success) {
+            allBookmarks = []; // Clear local cache
+            renderBookmarks(); // Refresh the UI to show empty state
+            showNotification(
+              'All timestamps cleared successfully!',
+              'success',
+              notificationArea
+            );
+          } else {
+            const errorMessage =
+              response && response.error
+                ? response.error
+                : 'Failed to clear bookmarks.';
+            console.error('Failed to clear bookmarks:', errorMessage);
+            showNotification(errorMessage, 'error', notificationArea);
+          }
         }
-        if (response && response.success) {
-          allBookmarks = []; // Clear local cache
-          filterBookmarks(''); // Refresh the UI to show empty state
-          showNotification('All timestamps cleared successfully!', 'success', notificationArea);
-        } else {
-          const errorMessage = response && response.error ? response.error : 'Failed to clear bookmarks.';
-          console.error('Failed to clear bookmarks:', errorMessage);
-          showNotification(errorMessage, 'error', notificationArea);
-        }
-      });
+      );
     }
   });
 
-  // Key for storing folder collapsed states
-  const FOLDER_STATE_KEY = 'folderCollapsedStates';
-
-  // Load shortcut setting and bookmarks
   async function loadAllData() {
     try {
-      // First get the shortcut setting
       const settingResult = await chrome.storage.sync.get(['shortcutEnabled']);
-      shortcutToggle.checked = settingResult.shortcutEnabled !== false; // Default to true
-      
-      // Then get the bookmark index
+      shortcutToggle.checked = settingResult.shortcutEnabled !== false;
+
       const indexResult = await chrome.storage.sync.get('bookmarkIndex');
-      const bookmarkIndex = indexResult.bookmarkIndex || { totalCount: 0, chunks: [] };
-      
+      const bookmarkIndex = indexResult.bookmarkIndex || {
+        totalCount: 0,
+        chunks: [],
+      };
+
       if (bookmarkIndex.totalCount === 0) {
         allBookmarks = [];
         loadingState.style.display = 'none';
-        filterBookmarks(searchInput.value);
+        renderBookmarks(); // Use new render function
         return;
       }
-      
-      // Get all chunks
+
       const BOOKMARK_CHUNK_PREFIX = 'bookmarks_chunk_';
-      const chunkKeys = bookmarkIndex.chunks.map(chunkId => `${BOOKMARK_CHUNK_PREFIX}${chunkId}`);
+      const chunkKeys = bookmarkIndex.chunks.map(
+        (chunkId) => `${BOOKMARK_CHUNK_PREFIX}${chunkId}`
+      );
       const chunksResult = await chrome.storage.sync.get(chunkKeys);
-      
-      // Combine all bookmarks from chunks
-      allBookmarks = [];
-      bookmarkIndex.chunks.forEach(chunkId => {
+
+      let loadedBookmarks = [];
+      bookmarkIndex.chunks.forEach((chunkId) => {
         const chunkKey = `${BOOKMARK_CHUNK_PREFIX}${chunkId}`;
         if (chunksResult[chunkKey]) {
-          allBookmarks = allBookmarks.concat(chunksResult[chunkKey]);
+          loadedBookmarks = loadedBookmarks.concat(chunksResult[chunkKey]);
         }
       });
-      
-      // Hide loading state and show bookmarks/empty state
+      allBookmarks = loadedBookmarks;
       loadingState.style.display = 'none';
-      filterBookmarks(searchInput.value);
+      sortAndRenderBookmarks(); // Initial sort and render
     } catch (error) {
       console.error('Error loading data:', error);
       loadingState.style.display = 'none';
@@ -85,543 +101,356 @@ document.addEventListener('DOMContentLoaded', () => {
       emptyState.style.display = 'block';
     }
   }
-  
-  // Start loading data
+
   loadAllData();
 
-  // Save shortcut setting
   shortcutToggle.addEventListener('change', (e) => {
     chrome.storage.sync.set({ shortcutEnabled: e.target.checked });
   });
 
-  // --- Grouping Logic ---
-  function groupBookmarksByVideo(bookmarks) {
-    const grouped = bookmarks.reduce((acc, bookmark) => {
-      const { videoId, videoTitle } = bookmark;
-      if (!acc[videoId]) {
-        acc[videoId] = {
-          title: videoTitle || 'Unknown Title', // Use stored title
-          bookmarks: [],
-          latestTimestamp: 0, // Track latest bookmark time for group sorting
-        };
-      }
-      acc[videoId].bookmarks.push(bookmark);
-      // Keep track of the latest bookmark timestamp within the group
-      if (bookmark.createdAt > acc[videoId].latestTimestamp) {
-        acc[videoId].latestTimestamp = bookmark.createdAt;
-      }
-      return acc;
-    }, {});
-
-    // Sort bookmarks within each group by timestamp (ascending)
-    Object.values(grouped).forEach((group) => {
-      group.bookmarks.sort((a, b) => a.timestamp - b.timestamp);
-    });
-
-    return grouped;
-  }
-
-  // --- Sorting Logic ---
-  function sortBookmarkGroups(groupedBookmarks, sortBy) {
-    // Convert grouped object to an array for sorting
-    const groupsArray = Object.entries(groupedBookmarks).map(
-      ([videoId, data]) => ({ videoId, ...data })
-    );
-
-    groupsArray.sort((a, b) => {
+  // --- Sorting Logic (for flat list) ---
+  function sortBookmarks(bookmarks, sortBy) {
+    return bookmarks.sort((a, b) => {
       switch (sortBy) {
         case 'newest':
-          return b.latestTimestamp - a.latestTimestamp; // Sort groups by newest bookmark within
+          return (b.savedAt || b.createdAt) - (a.savedAt || a.createdAt); // Use savedAt or createdAt
         case 'oldest':
-          return a.latestTimestamp - b.latestTimestamp; // Sort groups by oldest bookmark within
-        case 'title': // New sort option: Alphabetical by video title
-          return a.title.localeCompare(b.title);
+          return (a.savedAt || a.createdAt) - (b.savedAt || b.createdAt);
+        case 'title':
+          return (a.videoTitle || '').localeCompare(b.videoTitle || '');
         default:
-          return b.latestTimestamp - a.latestTimestamp; // Default to newest
+          return (b.savedAt || b.createdAt) - (a.savedAt || a.createdAt);
       }
     });
-
-    return groupsArray; // Return sorted array of groups
   }
 
-  // --- Rendering Logic ---
-  function createBookmarkElement(bookmark, index) {
-    const thumbnailUrl = `https://i.ytimg.com/vi/${bookmark.videoId}/hqdefault.jpg`; // Use hqdefault
-    const div = document.createElement('div');
-    div.className = 'bookmark';
-    const bookmarkId = bookmark.id;
-    const notes = bookmark.notes || ''; // Get notes, default to empty string
+  // --- Rendering Logic (for flat list) ---
+  function renderBookmarks() {
+    bookmarksList.innerHTML = ''; // Clear existing list
+    const searchTerm = searchInput.value.toLowerCase();
 
-    // Determine a fallback thumbnail if needed (consider a local placeholder)
-    const finalThumbnailUrl = thumbnailUrl; // For now, just use the fetched one
+    const filteredBookmarks = allBookmarks.filter(
+      (bookmark) =>
+        (bookmark.videoTitle || '').toLowerCase().includes(searchTerm) ||
+        (bookmark.notes || '').toLowerCase().includes(searchTerm)
+    );
+
+    if (
+      filteredBookmarks.length === 0 &&
+      allBookmarks.length > 0 &&
+      searchTerm
+    ) {
+      emptyState.textContent = 'No bookmarks match your search.';
+      emptyState.style.display = 'block';
+    } else if (filteredBookmarks.length === 0 && allBookmarks.length === 0) {
+      emptyState.textContent =
+        'No timestamps saved yet. Save some from YouTube!';
+      emptyState.style.display = 'block';
+    } else {
+      emptyState.style.display = 'none';
+    }
+
+    filteredBookmarks.forEach((bookmark, index) => {
+      const bookmarkElement = createBookmarkElement(bookmark, index);
+      bookmarksList.appendChild(bookmarkElement);
+    });
+
+    // Update delete all button state
+    deleteAllBtn.disabled = allBookmarks.length === 0;
+  }
+
+  function sortAndRenderBookmarks() {
+    allBookmarks = sortBookmarks(allBookmarks, currentSort);
+    renderBookmarks();
+  }
+
+  // createBookmarkElement function remains largely the same but will be appended directly
+  // Ensure createBookmarkElement is defined before this point if it's not hoisted, or move its definition up
+  function createBookmarkElement(bookmark, index) {
+    const thumbnailUrl = `https://i.ytimg.com/vi/${bookmark.videoId}/hqdefault.jpg`;
+    const div = document.createElement('div');
+    // Assign a class for general bookmark styling, maybe 'bookmark-card'
+    div.className = 'bookmark-card'; // New class for the card itself
+    const bookmarkId = bookmark.id;
+    const notes = bookmark.notes || '';
 
     div.innerHTML = `
-      <div class="timestamp-preview">
-        Saved on ${new Date(bookmark.createdAt).toLocaleString(undefined, {
-          year: 'numeric',
-          month: 'short',
-          day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        })} // Use createdAt for display
-      </div>
       <div class="thumbnail-container">
         <img
           class="thumbnail"
-          src="${finalThumbnailUrl}" /* Set src directly */
+          src="${thumbnailUrl}"
           alt="Video thumbnail"
         />
-        <div class="thumbnail-placeholder" style="background: #eee; height: 100%; width: 100%; text-align: center; line-height: 68px; color: #aaa; font-size: 12px;">No thumb</div>
+        <div class="thumbnail-placeholder" style="display: none; background: #eee; height: 100%; width: 100%; text-align: center; line-height: 68px; color: #aaa; font-size: 12px;">No thumb</div>
         <div class="timestamp-badge">${formatTime(bookmark.timestamp)}</div>
       </div>
       <div class="bookmark-info">
-        <div>
-          <a href="${bookmark.url}" target="_blank">
-            <div class="title">${bookmark.videoTitle}</div>
-          </a>
+        <a href="${bookmark.url}" target="_blank" class="video-title-link" title="${bookmark.videoTitle}">
+          <h3 class="video-title">${bookmark.videoTitle}</h3>
+        </a>
+        <!-- Start of new wrapper -->
+        <div class="bookmark-details-row">
           <div class="timestamp-actions">
-            <button class="share-btn" data-url="${
-              bookmark.url
-            }" title="Copy link to clipboard">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92zM18 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM6 13c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm12 7.02c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z" fill="currentColor"/>
-              </svg>
+            <button class="share-btn icon-btn" data-url="${bookmark.url}" title="Copy link to clipboard">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92zM18 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM6 13c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm12 7.02c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z" fill="currentColor"/></svg>
             </button>
-            <button class="delete-btn" data-bookmark-id="${bookmarkId}" title="Delete timestamp">
-              <span class="delete-icon">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z" fill="currentColor"/>
-                </svg>
-              </span>
-              <span class="loading-spinner" style="display: none;">
-                <svg class="animate-spin" width="14" height="14" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              </span>
+            <button class="delete-btn icon-btn" data-bookmark-id="${bookmarkId}" title="Delete timestamp">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
             </button>
           </div>
+          <div class="saved-date">Saved: ${new Date(bookmark.savedAt || bookmark.createdAt).toLocaleDateString()}</div>
         </div>
+        <!-- End of new wrapper -->
       </div>
       <div class="notes-container">
-        <textarea class="notes-textarea" data-bookmark-id="${bookmarkId}" placeholder="Add notes...">${notes}</textarea>
+        <div class="note-display">
+          <span class="note-preview"></span>
+          <button class="edit-note-btn" title="Edit Note">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+          </button>
+        </div>
+        <textarea class="notes-textarea" data-bookmark-id="${bookmarkId}" placeholder="Add notes..." style="display: none;" rows="3">${notes}</textarea>
       </div>
     `;
 
-    // Add error handler for the thumbnail image
     const thumbnailImg = div.querySelector('.thumbnail');
     const thumbnailPlaceholder = div.querySelector('.thumbnail-placeholder');
-    thumbnailImg.addEventListener('error', () => {
+    thumbnailImg.onerror = () => {
+      // Simpler error assignment
       thumbnailImg.style.display = 'none';
-      if (thumbnailPlaceholder) {
-        thumbnailPlaceholder.style.display = 'block';
-      }
-    });
+      thumbnailPlaceholder.style.display = 'block';
+    };
 
-    // Add click handler for share button
     const shareBtn = div.querySelector('.share-btn');
     shareBtn.addEventListener('click', async (e) => {
-      e.preventDefault();
-      const url = shareBtn.dataset.url;
-
       try {
-        await navigator.clipboard.writeText(url);
-        shareBtn.classList.add('shared');
-        setTimeout(() => shareBtn.classList.remove('shared'), 1500);
-        showNotification('Link copied to clipboard!');
+        await navigator.clipboard.writeText(shareBtn.dataset.url);
+        showNotification('Link copied!', 'success', notificationArea);
       } catch (err) {
-        showNotification('Failed to copy link', 'error');
+        showNotification('Failed to copy link', 'error', notificationArea);
       }
     });
 
+    const deleteBtn = div.querySelector('.delete-btn');
+    deleteBtn.addEventListener('click', (e) => {
+      const idToDelete = deleteBtn.dataset.bookmarkId;
+      showUndoNotification(idToDelete, index); // Pass index for potential re-insertion
+      // deleteBookmark(idToDelete); // This will be called by the undo notification or directly if no undo
+    });
+
+    const noteDisplay = div.querySelector('.note-display');
+    const notePreview = div.querySelector('.note-preview');
+    const editNoteBtn = div.querySelector('.edit-note-btn');
+    const notesTextarea = div.querySelector('.notes-textarea');
+
+    function updateNotePreview() {
+      const currentNotes = notesTextarea.value.trim();
+      if (currentNotes) {
+        notePreview.textContent =
+          currentNotes.split('\n')[0].substring(0, 30) +
+          (currentNotes.length > 30 || currentNotes.includes('\n')
+            ? '...'
+            : '');
+        editNoteBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`;
+        editNoteBtn.title = 'Edit Note';
+      } else {
+        notePreview.textContent = '';
+        editNoteBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>`;
+        editNoteBtn.title = 'Add Note';
+      }
+    }
+    updateNotePreview();
+
+    editNoteBtn.addEventListener('click', () => {
+      noteDisplay.style.display = 'none';
+      notesTextarea.style.display = 'block';
+      notesTextarea.style.width = '100%';
+      notesTextarea.focus();
+    });
+
+    notesTextarea.addEventListener('blur', () => {
+      setTimeout(() => {
+        updateNotePreview();
+        notesTextarea.style.display = 'none';
+        noteDisplay.style.display = 'flex';
+      }, 100);
+    });
     return div;
   }
 
-  // Render the list of bookmarks, grouped by video
-  function renderBookmarkGroups(filteredBookmarks) {
-    bookmarksList.innerHTML = ''; // Clear previous list
-
-    if (filteredBookmarks.length === 0) {
-      const searchTerm = searchInput.value.trim();
-      emptyState.textContent =
-        searchTerm === ''
-          ? 'No bookmarks yet. Add some from YouTube!'
-          : 'No bookmarks match your search.';
-      emptyState.style.display = 'block'; // Show empty state
-      bookmarksList.style.display = 'none'; // Hide bookmark list container
-      deleteAllBtn.disabled = allBookmarks.length === 0;
-    } else {
-      emptyState.style.display = 'none';
-      bookmarksList.style.display = 'block';
-
-      const grouped = groupBookmarksByVideo(filteredBookmarks);
-      const sortedGroups = sortBookmarkGroups(grouped, sortSelect.value);
-
-      sortedGroups.forEach((group) => {
-        const groupDiv = document.createElement('div');
-        groupDiv.className = 'video-group collapsed';
-
-        const groupHeader = document.createElement('h3');
-        groupHeader.className = 'folder-header';
-        // Make title a link to the video (first bookmark's URL without timestamp)
-        const videoBaseUrl = group.bookmarks[0].url.split('&t=')[0];
-        groupHeader.textContent = group.title; // Use group.title directly
-        groupHeader.dataset.folderName = group.title; // Use group.title directly
-        groupHeader.addEventListener('click', () =>
-          toggleFolder(group.title, groupHeader)
-        ); // Use group.title directly
-
-        const bookmarksContainer = document.createElement('div');
-        bookmarksContainer.className = 'timestamp-list-container';
-
-        // Sort bookmarks within the folder by time added (descending - newest first)
-        const sortedBookmarks = group.bookmarks.sort(
-          (a, b) => (b.createdAt || 0) - (a.createdAt || 0)
-        );
-
-        sortedBookmarks.forEach((bookmark, index) => {
-          const bookmarkElement = createBookmarkElement(bookmark, index);
-          bookmarksContainer.appendChild(bookmarkElement);
-        });
-        groupDiv.appendChild(groupHeader);
-        groupDiv.appendChild(bookmarksContainer);
-        bookmarksList.appendChild(groupDiv);
-      });
-
-      deleteAllBtn.disabled = allBookmarks.length === 0;
-    }
-  }
-
-  // --- Filtering Logic ---
-  function filterBookmarks(searchTerm) {
-    const lowerSearchTerm = searchTerm.toLowerCase();
-    const filtered = searchTerm
-      ? allBookmarks.filter((bookmark) =>
-          bookmark.videoTitle.toLowerCase().includes(lowerSearchTerm)
-        )
-      : allBookmarks;
-    renderBookmarkGroups(filtered); // Update the list display using grouped rendering
-  }
-
-  // Use debounced search
-  const debouncedFilter = debounce(
-    (searchTerm) => filterBookmarks(searchTerm),
-    300
-  );
-  searchInput.addEventListener('input', (e) => debouncedFilter(e.target.value));
-
-  sortSelect.addEventListener('change', () =>
-    filterBookmarks(searchInput.value)
+  searchInput.addEventListener(
+    'input',
+    debounce(() => sortAndRenderBookmarks(), 300)
   );
 
-  let lastDeletedBookmark = null;
-  let lastDeletedIndex = -1; // Store index for potential undo
+  sortSelect.addEventListener('change', (e) => {
+    currentSort = e.target.value;
+    sortAndRenderBookmarks();
+  });
 
-  function showUndoNotification() {
-    const notification = document.createElement('div');
-    notification.className = 'notification with-action';
-    notification.innerHTML = `
-      <span>Bookmark deleted</span>
-      <button class="undo-btn">Undo</button>
-    `;
+  // --- Undo Notification & Delete Logic ---
+  let undoTimeout = null;
+  let bookmarkToUndo = null;
+  let originalIndexForUndo = -1; // Store original index for re-insertion
 
-    document.body.appendChild(notification);
+  function showUndoNotification(bookmarkId, originalIndex) {
+    const undoNotification = document.getElementById('undoNotification');
+    const undoBtn = document.getElementById('undoBtn');
 
-    const undoBtn = notification.querySelector('.undo-btn');
-    undoBtn.addEventListener('click', async () => {
-      if (lastDeletedBookmark) {
-        // Re-insert at the original position if possible
-        if (lastDeletedIndex >= 0 && lastDeletedIndex <= allBookmarks.length) {
-          allBookmarks.splice(lastDeletedIndex, 0, lastDeletedBookmark);
-        } else {
-          allBookmarks.push(lastDeletedBookmark); // Fallback: add to end
-        }
-        
-        try {
-          // Get all bookmarks from chunked storage
-          const BOOKMARK_CHUNK_PREFIX = 'bookmarks_chunk_';
-          const BOOKMARK_CHUNK_SIZE = 100; // Must match background.js
-          
-          // Reorganize all bookmarks into chunks
-          const chunkCount = Math.ceil(allBookmarks.length / BOOKMARK_CHUNK_SIZE);
-          const newChunks = [];
-          
-          // Create new chunks
-          for (let i = 0; i < chunkCount; i++) {
-            const chunkId = i.toString();
-            const chunkKey = `${BOOKMARK_CHUNK_PREFIX}${chunkId}`;
-            const startIndex = i * BOOKMARK_CHUNK_SIZE;
-            const endIndex = Math.min(startIndex + BOOKMARK_CHUNK_SIZE, allBookmarks.length);
-            const chunkBookmarks = allBookmarks.slice(startIndex, endIndex);
-            
-            // Save this chunk
-            await chrome.storage.sync.set({ [chunkKey]: chunkBookmarks });
-            newChunks.push(chunkId);
-          }
-          
-          // Update the bookmark index
-          await chrome.storage.sync.set({
-            bookmarkIndex: {
-              totalCount: allBookmarks.length,
-              chunks: newChunks
-            }
-          });
-          
-          filterBookmarks(searchInput.value);
-          notification.remove();
-          showNotification('Bookmark restored');
-          lastDeletedBookmark = null;
-          lastDeletedIndex = -1;
-        } catch (error) {
-          console.error('Error restoring bookmark:', error);
-          showNotification('Failed to restore bookmark', 'error');
-        }
+    bookmarkToUndo = allBookmarks.find((b) => b.id === bookmarkId);
+    originalIndexForUndo = originalIndex; // Capture original index relative to current filtered/sorted view
+
+    // Temporarily remove from UI and allBookmarks for visual effect
+    allBookmarks = allBookmarks.filter((b) => b.id !== bookmarkId);
+    renderBookmarks(); // Re-render without the item
+
+    undoNotification.classList.add('show');
+
+    undoBtn.onclick = () => {
+      // Use onclick to easily reassign
+      clearTimeout(undoTimeout);
+      undoNotification.classList.remove('show');
+      if (bookmarkToUndo) {
+        // Re-insert at original position or sort again
+        // For simplicity now, just add back and re-sort/re-render
+        allBookmarks.push(bookmarkToUndo);
+        sortAndRenderBookmarks(); // This will re-sort and re-render
       }
-    });
+      bookmarkToUndo = null;
+      originalIndexForUndo = -1;
+    };
 
-    setTimeout(() => {
-      if (notification.parentNode) {
-        notification.remove();
-        lastDeletedBookmark = null;
-        lastDeletedIndex = -1;
+    clearTimeout(undoTimeout);
+    undoTimeout = setTimeout(() => {
+      undoNotification.classList.remove('show');
+      if (bookmarkToUndo) {
+        // If undo was not clicked, proceed with actual deletion from storage
+        deleteBookmarkFromStorage(bookmarkToUndo.id);
       }
-    }, 5000);
+      bookmarkToUndo = null;
+      originalIndexForUndo = -1;
+    }, 5000); // 5 seconds to undo
   }
 
-  // More efficient delete function
-  async function deleteBookmark(bookmarkId) {
-    const indexToDelete = allBookmarks.findIndex((b) => b.id === bookmarkId);
-
-    if (indexToDelete !== -1) {
-      lastDeletedBookmark = allBookmarks[indexToDelete];
-      lastDeletedIndex = indexToDelete; // Store index before splicing
-      allBookmarks.splice(indexToDelete, 1);
-
-      try {
-        // Get all bookmarks from chunked storage
-        const BOOKMARK_CHUNK_PREFIX = 'bookmarks_chunk_';
-        const BOOKMARK_CHUNK_SIZE = 100; // Must match background.js
-        
-        // Reorganize all bookmarks into chunks
-        const chunkCount = Math.ceil(allBookmarks.length / BOOKMARK_CHUNK_SIZE);
-        const newChunks = [];
-        
-        // Create new chunks
-        for (let i = 0; i < chunkCount; i++) {
-          const chunkId = i.toString();
-          const chunkKey = `${BOOKMARK_CHUNK_PREFIX}${chunkId}`;
-          const startIndex = i * BOOKMARK_CHUNK_SIZE;
-          const endIndex = Math.min(startIndex + BOOKMARK_CHUNK_SIZE, allBookmarks.length);
-          const chunkBookmarks = allBookmarks.slice(startIndex, endIndex);
-          
-          // Save this chunk
-          await chrome.storage.sync.set({ [chunkKey]: chunkBookmarks });
-          newChunks.push(chunkId);
-        }
-        
-        // Get the old index to find chunks that need to be removed
-        const indexResult = await chrome.storage.sync.get('bookmarkIndex');
-        const oldIndex = indexResult.bookmarkIndex || { totalCount: 0, chunks: [] };
-        
-        // Clean up any old chunks that are no longer needed
-        const chunksToRemove = oldIndex.chunks.filter(id => !newChunks.includes(id))
-          .map(id => `${BOOKMARK_CHUNK_PREFIX}${id}`);
-        
-        if (chunksToRemove.length > 0) {
-          await chrome.storage.sync.remove(chunksToRemove);
-        }
-        
-        // Update the bookmark index
-        await chrome.storage.sync.set({
-          bookmarkIndex: {
-            totalCount: allBookmarks.length,
-            chunks: newChunks
-          }
-        });
-        
-        filterBookmarks(searchInput.value); // Update the UI immediately
-        showUndoNotification(); // Show undo option
-      } catch (error) {
-        // If saving fails, revert the change in memory and notify user
-        console.error('Failed to save deletion:', error);
-        if (lastDeletedBookmark) {
-          allBookmarks.splice(lastDeletedIndex, 0, lastDeletedBookmark); // Put it back
-          filterBookmarks(searchInput.value); // Update UI again
-        }
-        showNotification('Failed to delete bookmark', 'error');
-        lastDeletedBookmark = null; // Clear undo state
-        lastDeletedIndex = -1;
-      }
-    } else {
-      console.warn('Bookmark ID not found for deletion:', bookmarkId);
-      showNotification('Could not find bookmark to delete', 'error');
-    }
-  }
-
-  // --- Add Notes Save Listener (Debounced) ---
-  const debouncedSaveNote = debounce(async (bookmarkId, newNotes) => {
+  async function deleteBookmarkFromStorage(bookmarkId) {
     try {
-      // Get all bookmarks from chunked storage
-      const BOOKMARK_CHUNK_PREFIX = 'bookmarks_chunk_';
-      const indexResult = await chrome.storage.sync.get('bookmarkIndex');
-      const bookmarkIndex = indexResult.bookmarkIndex || { totalCount: 0, chunks: [] };
-      
-      if (bookmarkIndex.totalCount === 0) {
-        console.error('No bookmarks found');
-        return;
+      let bookmarks = await getAllBookmarksFromStorage(); // Helper to get all raw bookmarks
+      bookmarks = bookmarks.filter((b) => b.id !== bookmarkId);
+      const success = await saveAllBookmarksToStorage(bookmarks); // Helper to save all raw bookmarks
+
+      if (success) {
+        console.log('Bookmark permanently deleted:', bookmarkId);
+        // allBookmarks is already updated visually, no need to call loadAllData unless you want a full refresh from storage
+      } else {
+        showNotification(
+          'Failed to delete bookmark permanently.',
+          'error',
+          notificationArea
+        );
+        // Potentially add back to allBookmarks and re-render if save failed
+        loadAllData(); // Re-sync with storage if permanent delete failed
       }
-      
-      // Find which chunk contains this bookmark
-      let foundInChunk = null;
-      
-      // Check each chunk
-      for (const chunkId of bookmarkIndex.chunks) {
-        const chunkKey = `${BOOKMARK_CHUNK_PREFIX}${chunkId}`;
-        const chunkResult = await chrome.storage.sync.get(chunkKey);
-        const chunkBookmarks = chunkResult[chunkKey] || [];
-        
-        const bookmarkInChunkIndex = chunkBookmarks.findIndex(b => b.id === bookmarkId);
-        if (bookmarkInChunkIndex !== -1) {
-          // Update the bookmark in this chunk
-          chunkBookmarks[bookmarkInChunkIndex].notes = newNotes;
-          
-          // Save the updated chunk
-          await chrome.storage.sync.set({ [chunkKey]: chunkBookmarks });
-          
-          // Also update our local copy
-          const localIndex = allBookmarks.findIndex((b) => b.id === bookmarkId);
-          if (localIndex !== -1) {
-            allBookmarks[localIndex].notes = newNotes;
-          }
-          
-          console.log(`Note saved for bookmark: ${bookmarkId}`);
-          return; // Exit after saving
-        }
-      }
-      
-      // If we get here, the bookmark wasn't found
-      console.error('Bookmark not found for saving note:', bookmarkId);
     } catch (error) {
-      console.error('Error saving note:', error);
-      showNotification('Error saving note', 'error');
+      console.error('Error deleting bookmark from storage:', error);
+      showNotification('Error deleting bookmark.', 'error', notificationArea);
+      loadAllData(); // Re-sync
     }
-  }, 500); // Save 500ms after user stops typing
-
-  bookmarksList.addEventListener('input', (e) => {
-    const textarea = e.target.closest('.notes-textarea');
-    if (textarea) {
-      const bookmarkId = textarea.dataset.bookmarkId;
-      const newNotes = textarea.value;
-      debouncedSaveNote(bookmarkId, newNotes);
-
-      // Auto-resize textarea height
-      textarea.style.height = 'auto'; // Reset height
-      textarea.style.height = `${textarea.scrollHeight}px`;
-    }
-  });
-
-  // --- Initialize Textarea Heights on Render ---
-  // We need to ensure heights are set after elements are in the DOM
-  // This can be tricky with async rendering. A MutationObserver is robust.
-  const resizeObserver = new MutationObserver((mutations) => {
-    for (const mutation of mutations) {
-      if (mutation.type === 'childList') {
-        mutation.addedNodes.forEach((node) => {
-          if (node.nodeType === 1 && node.classList.contains('bookmark')) {
-            const textarea = node.querySelector('.notes-textarea');
-            if (textarea) {
-              textarea.style.height = 'auto';
-              textarea.style.height = `${textarea.scrollHeight}px`;
-            }
-          }
-          // Also handle cases where the whole group is added
-          if (node.nodeType === 1 && node.classList.contains('video-group')) {
-            node.querySelectorAll('.notes-textarea').forEach((textarea) => {
-              textarea.style.height = 'auto';
-              textarea.style.height = `${textarea.scrollHeight}px`;
-            });
-          }
-        });
-      }
-    }
-  });
-
-  resizeObserver.observe(bookmarksList, { childList: true, subtree: true });
-
-  bookmarksList.addEventListener('click', (e) => {
-    const groupTitle = e.target.closest('.folder-header');
-    if (groupTitle) {
-      e.preventDefault(); // Prevent default anchor tag behavior if title is a link
-      const groupDiv = groupTitle.closest('.video-group');
-      if (groupDiv) {
-        groupDiv.classList.toggle('collapsed');
-      }
-    }
-
-    // Handle delete button clicks (existing logic)
-    const deleteBtn = e.target.closest('.delete-btn');
-    if (deleteBtn && !deleteBtn.disabled) {
-      const bookmarkId = deleteBtn.dataset.bookmarkId;
-      if (bookmarkId) {
-        // Show loading spinner on the specific button
-        const icon = deleteBtn.querySelector('.delete-icon');
-        const spinner = deleteBtn.querySelector('.loading-spinner');
-        if (icon) icon.style.display = 'none';
-        if (spinner) spinner.style.display = 'inline-block';
-        deleteBtn.disabled = true; // Disable button during delete
-
-        deleteBookmark(bookmarkId).finally(() => {
-          // Restore button state regardless of success/failure
-          if (icon) icon.style.display = 'inline-block';
-          if (spinner) spinner.style.display = 'none';
-          // Re-enable might happen automatically if the element is removed,
-          // but good practice to handle it if deletion fails.
-          // The element might not exist anymore if deletion was successful.
-          const stillExistingBtn = document.querySelector(
-            `.delete-btn[data-bookmark-id="${bookmarkId}"]`
-          );
-          if (stillExistingBtn) {
-            stillExistingBtn.disabled = false;
-          }
-        });
-      }
-    }
-  });
-
-  // Initial call to display bookmarks
-  // chrome.storage.sync.get('bookmarks', (data) => {
-  //     allBookmarks = data.bookmarks || [];
-
-  //     renderBookmarkGroups(allBookmarks);
-  // });
-
-  // --- New function to toggle folder visibility ---
-  async function toggleFolder(folderName, headerElement) {
-    const listContainer = headerElement.nextElementSibling; // The timestamp list container
-    const isCollapsed = headerElement.classList.toggle('collapsed');
-
-    // Update display
-    listContainer.style.display = isCollapsed ? 'none' : 'block';
-
-    // Update and save state
-    const stateResult = await chrome.storage.local.get(FOLDER_STATE_KEY);
-    const folderStates = stateResult[FOLDER_STATE_KEY] || {};
-    folderStates[folderName] = isCollapsed;
-    await chrome.storage.local.set({ [FOLDER_STATE_KEY]: folderStates });
-    console.log('Folder states updated:', folderStates);
   }
-  // --- End of new function ---
 
-  // Load folder states
-  chrome.storage.local.get(FOLDER_STATE_KEY, (result) => {
-    const folderStates = result[FOLDER_STATE_KEY] || {};
-    const folderHeaders = bookmarksList.querySelectorAll('.folder-header');
-    folderHeaders.forEach((header) => {
-      const folderName = header.dataset.folderName;
-      if (folderStates[folderName]) {
-        header.classList.add('collapsed');
-        header.nextElementSibling.style.display = 'none';
+  // Helper functions for direct storage interaction (need to be robust)
+  async function getAllBookmarksFromStorage() {
+    const indexResult = await chrome.storage.sync.get('bookmarkIndex');
+    const bookmarkIndex = indexResult.bookmarkIndex || {
+      totalCount: 0,
+      chunks: [],
+    };
+    if (bookmarkIndex.totalCount === 0) return [];
+
+    const BOOKMARK_CHUNK_PREFIX = 'bookmarks_chunk_';
+    const chunkKeys = bookmarkIndex.chunks.map(
+      (chunkId) => `${BOOKMARK_CHUNK_PREFIX}${chunkId}`
+    );
+    const chunksResult = await chrome.storage.sync.get(chunkKeys);
+
+    let loadedBookmarks = [];
+    bookmarkIndex.chunks.forEach((chunkId) => {
+      const chunkKey = `${BOOKMARK_CHUNK_PREFIX}${chunkId}`;
+      if (chunksResult[chunkKey]) {
+        loadedBookmarks = loadedBookmarks.concat(chunksResult[chunkKey]);
       }
     });
-  });
+    return loadedBookmarks;
+  }
+
+  async function saveAllBookmarksToStorage(bookmarks) {
+    try {
+      const BOOKMARK_CHUNK_PREFIX = 'bookmarks_chunk_';
+      const BOOKMARK_CHUNK_SIZE = 100; // Make sure this constant is available or defined
+      const chunkCount = Math.ceil(bookmarks.length / BOOKMARK_CHUNK_SIZE);
+      const newChunksData = {};
+      const newChunkIds = [];
+
+      for (let i = 0; i < chunkCount; i++) {
+        const chunkId = i.toString();
+        const chunkKey = `${BOOKMARK_CHUNK_PREFIX}${chunkId}`;
+        const startIndex = i * BOOKMARK_CHUNK_SIZE;
+        const endIndex = Math.min(
+          startIndex + BOOKMARK_CHUNK_SIZE,
+          bookmarks.length
+        );
+        newChunksData[chunkKey] = bookmarks.slice(startIndex, endIndex);
+        newChunkIds.push(chunkId);
+      }
+
+      // Remove old chunks that are no longer needed
+      const oldIndexResult = await chrome.storage.sync.get('bookmarkIndex');
+      const oldBookmarkIndex = oldIndexResult.bookmarkIndex || { chunks: [] };
+      const keysToRemove = oldBookmarkIndex.chunks
+        .filter((oldChunkId) => !newChunkIds.includes(oldChunkId))
+        .map((oldChunkId) => `${BOOKMARK_CHUNK_PREFIX}${oldChunkId}`);
+
+      if (keysToRemove.length > 0) {
+        await chrome.storage.sync.remove(keysToRemove);
+      }
+
+      // Save new chunks and the updated index
+      await chrome.storage.sync.set(newChunksData);
+      await chrome.storage.sync.set({
+        bookmarkIndex: {
+          totalCount: bookmarks.length,
+          chunks: newChunkIds,
+        },
+      });
+      return true;
+    } catch (error) {
+      console.error('Error in saveAllBookmarksToStorage:', error);
+      return false;
+    }
+  }
+
+  // Debounced notes save listener (event delegation on bookmarksList)
+  bookmarksList.addEventListener(
+    'input',
+    debounce(async (e) => {
+      if (e.target && e.target.classList.contains('notes-textarea')) {
+        const bookmarkId = e.target.dataset.bookmarkId;
+        const newNotes = e.target.value;
+
+        const targetBookmark = allBookmarks.find((b) => b.id === bookmarkId);
+        if (targetBookmark) {
+          targetBookmark.notes = newNotes;
+          // Also update in storage
+          const success = await saveAllBookmarksToStorage(allBookmarks);
+          if (success) {
+            // Optionally show a subtle save confirmation, but debouncing often makes it implicit
+            console.log('Note saved for', bookmarkId);
+          } else {
+            showNotification('Error saving note.', 'error', notificationArea);
+          }
+        }
+      }
+    }, 500)
+  );
+
+  // No FOLDER_STATE_KEY logic needed anymore
 });
