@@ -62,38 +62,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function loadAllData() {
     try {
+      // Get shortcut setting
       const settingResult = await chrome.storage.sync.get(['shortcutEnabled']);
       shortcutToggle.checked = settingResult.shortcutEnabled !== false;
 
-      const indexResult = await chrome.storage.sync.get('bookmarkIndex');
-      const bookmarkIndex = indexResult.bookmarkIndex || {
-        totalCount: 0,
-        chunks: [],
-      };
-
-      if (bookmarkIndex.totalCount === 0) {
-        allBookmarks = [];
-        loadingState.style.display = 'none';
-        renderBookmarks(); // Use new render function
-        return;
-      }
-
-      const BOOKMARK_CHUNK_PREFIX = 'bookmarks_chunk_';
-      const chunkKeys = bookmarkIndex.chunks.map(
-        (chunkId) => `${BOOKMARK_CHUNK_PREFIX}${chunkId}`
-      );
-      const chunksResult = await chrome.storage.sync.get(chunkKeys);
-
-      let loadedBookmarks = [];
-      bookmarkIndex.chunks.forEach((chunkId) => {
-        const chunkKey = `${BOOKMARK_CHUNK_PREFIX}${chunkId}`;
-        if (chunksResult[chunkKey]) {
-          loadedBookmarks = loadedBookmarks.concat(chunksResult[chunkKey]);
-        }
-      });
-      allBookmarks = loadedBookmarks;
+      // Get bookmarks using the new direct storage approach
+      const result = await chrome.storage.sync.get('timpstamp_bookmarks');
+      const bookmarks = result.timpstamp_bookmarks || [];
+      
+      // Store bookmarks in global variable
+      allBookmarks = bookmarks;
+      
+      // Update UI
       loadingState.style.display = 'none';
-      sortAndRenderBookmarks(); // Initial sort and render
+      sortAndRenderBookmarks(); // Sort and render the bookmarks
     } catch (error) {
       console.error('Error loading data:', error);
       loadingState.style.display = 'none';
@@ -174,6 +156,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const bookmarkId = bookmark.id;
     const notes = bookmark.notes || '';
 
+    div.dataset.bookmarkId = bookmarkId; // Set the data attribute on the main card div
+
     div.innerHTML = `
       <div class="thumbnail-container">
         <img
@@ -233,9 +217,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const deleteBtn = div.querySelector('.delete-btn');
     deleteBtn.addEventListener('click', (e) => {
+      console.log('[Delete Flow] Delete button clicked for:', deleteBtn.dataset.bookmarkId);
       const idToDelete = deleteBtn.dataset.bookmarkId;
-      showUndoNotification(idToDelete, index); // Pass index for potential re-insertion
-      // deleteBookmark(idToDelete); // This will be called by the undo notification or directly if no undo
+      initiateDeleteWithUndo(idToDelete);
     });
 
     const noteDisplay = div.querySelector('.note-display');
@@ -288,169 +272,165 @@ document.addEventListener('DOMContentLoaded', () => {
     sortAndRenderBookmarks();
   });
 
-  // --- Undo Notification & Delete Logic ---
-  let undoTimeout = null;
-  let bookmarkToUndo = null;
-  let originalIndexForUndo = -1; // Store original index for re-insertion
+  // --- Undo Notification & Delete/Restore Logic --- //
 
-  function showUndoNotification(bookmarkId, originalIndex) {
-    const undoNotification = document.getElementById('undoNotification');
-    const undoBtn = document.getElementById('undoBtn');
+  const undoNotification = document.getElementById('undoNotification');
+  const undoBtn = document.getElementById('undoBtn');
 
-    bookmarkToUndo = allBookmarks.find((b) => b.id === bookmarkId);
-    originalIndexForUndo = originalIndex; // Capture original index relative to current filtered/sorted view
+  let undoState = { bookmarkToRestore: null, timeoutId: null }; // Store the whole bookmark for restoration
 
-    // Temporarily remove from UI and allBookmarks for visual effect
-    allBookmarks = allBookmarks.filter((b) => b.id !== bookmarkId);
-    renderBookmarks(); // Re-render without the item
+  // *** NEW: Function to orchestrate instant deletion and then show undo ***
+  async function initiateDeleteWithUndo(bookmarkId) {
+    console.log(`[Delete Flow] initiateDeleteWithUndo START for: ${bookmarkId}`);
+    const deletedBookmark = await deleteBookmarkFromStorage(bookmarkId); // Delete first
 
+    if (deletedBookmark) {
+      console.log(`[Delete Flow] Bookmark ${bookmarkId} deleted. Reloading list and showing undo.`);
+      loadAllData(); // Refresh UI immediately *after* successful deletion
+      showUndoNotification(deletedBookmark); // Show undo option, passing the deleted data
+    } else {
+      console.log(`[Delete Flow] Bookmark ${bookmarkId} not found or failed to delete. Not showing undo.`);
+      loadAllData(); // Still refresh UI in case of partial failure state
+    }
+  }
+
+  function showUndoNotification(deletedBookmarkData) {
+    console.log('[Undo Flow] showUndoNotification called for potential restore of:', deletedBookmarkData.id);
+    // Clear any previous undo state/timeout
+    if (undoState.timeoutId) {
+      clearTimeout(undoState.timeoutId);
+    }
+    // Store the data needed for potential restore
+    undoState.bookmarkToRestore = deletedBookmarkData;
+
+    // Show the notification bar
     undoNotification.classList.add('show');
 
-    undoBtn.onclick = () => {
-      // Use onclick to easily reassign
-      clearTimeout(undoTimeout);
+    // Set timeout to hide notification and clear state
+    undoState.timeoutId = setTimeout(() => {
+      console.log('[Undo Flow] Undo timeout expired for:', undoState.bookmarkToRestore?.id);
       undoNotification.classList.remove('show');
-      if (bookmarkToUndo) {
-        // Re-insert at original position or sort again
-        // For simplicity now, just add back and re-sort/re-render
-        allBookmarks.push(bookmarkToUndo);
-        sortAndRenderBookmarks(); // This will re-sort and re-render
-      }
-      bookmarkToUndo = null;
-      originalIndexForUndo = -1;
-    };
-
-    clearTimeout(undoTimeout);
-    undoTimeout = setTimeout(() => {
-      undoNotification.classList.remove('show');
-      if (bookmarkToUndo) {
-        // If undo was not clicked, proceed with actual deletion from storage
-        deleteBookmarkFromStorage(bookmarkToUndo.id);
-      }
-      bookmarkToUndo = null;
-      originalIndexForUndo = -1;
+      undoState = { bookmarkToRestore: null, timeoutId: null }; // Just clear state
     }, 5000); // 5 seconds to undo
   }
 
+  // *** NEW: Separate function to handle the Undo button click ***
+  async function handleUndoClick() {
+    console.log('[Undo Flow] Undo button clicked.');
+    if (undoState.timeoutId) {
+      clearTimeout(undoState.timeoutId); // Prevent timeout from clearing state
+    }
+    undoNotification.classList.remove('show');
+
+    const bookmarkToRestore = undoState.bookmarkToRestore;
+    undoState = { bookmarkToRestore: null, timeoutId: null }; // Clear state immediately
+
+    if (bookmarkToRestore) {
+      console.log('[Undo Flow] Restoring bookmark:', bookmarkToRestore.id);
+      await restoreBookmark(bookmarkToRestore);
+      loadAllData(); // Refresh UI after successful restore
+    } else {
+      console.warn('[Undo Flow] Undo clicked but no bookmark data found in state.');
+    }
+  }
+
+  // Add listener to the Undo button ONCE
+  undoBtn.addEventListener('click', handleUndoClick);
+
+  // --- Storage Interaction --- //
+
   async function deleteBookmarkFromStorage(bookmarkId) {
+    console.log(`[Storage] deleteBookmarkFromStorage START for: ${bookmarkId}`);
+    let deletedBookmark = null; // To store the data of the bookmark being deleted
     try {
-      let bookmarks = await getAllBookmarksFromStorage(); // Helper to get all raw bookmarks
-      bookmarks = bookmarks.filter((b) => b.id !== bookmarkId);
-      const success = await saveAllBookmarksToStorage(bookmarks); // Helper to save all raw bookmarks
+      console.log(`[Storage] Fetching bookmarks before deleting ${bookmarkId}`);
+      const result = await chrome.storage.sync.get('timpstamp_bookmarks');
+      let bookmarks = result.timpstamp_bookmarks || [];
 
-      if (success) {
-        console.log('Bookmark permanently deleted:', bookmarkId);
-        // allBookmarks is already updated visually, no need to call loadAllData unless you want a full refresh from storage
+      // *** CHANGE: Find the bookmark first to return its data ***
+      deletedBookmark = bookmarks.find(b => b.id === bookmarkId) || null;
+
+      bookmarks = bookmarks.filter(b => b.id !== bookmarkId);
+      const finalLength = bookmarks.length;
+
+      if (bookmarks.length === 0) {
+        console.log(`[Storage] Bookmarks after filtering ${bookmarkId} (removed: 1, new count: ${finalLength})`);
       } else {
-        showNotification(
-          'Failed to delete bookmark permanently.',
-          'error',
-          notificationArea
-        );
-        // Potentially add back to allBookmarks and re-render if save failed
-        loadAllData(); // Re-sync with storage if permanent delete failed
+        console.log(`[Storage] Bookmarks after filtering ${bookmarkId} (removed: 1, new count: ${finalLength})`);
       }
+
+      console.log(`[Storage] Saving updated bookmarks back to storage (count: ${finalLength})`);
+      await chrome.storage.sync.set({ 'timpstamp_bookmarks': bookmarks });
+      console.log(`[Storage] Saved updated bookmarks.`);
+      showNotification('Bookmark deleted.', 'success', notificationArea);
+      return deletedBookmark; // *** CHANGE: Return the data of the deleted item ***
     } catch (error) {
-      console.error('Error deleting bookmark from storage:', error);
-      showNotification('Error deleting bookmark.', 'error', notificationArea);
-      loadAllData(); // Re-sync
+      console.error('[Storage] Error deleting bookmark:', error);
+      showNotification('Failed to delete bookmark.', 'error', notificationArea);
+      return null; // Indicate failure
     }
   }
 
-  // Helper functions for direct storage interaction (need to be robust)
-  async function getAllBookmarksFromStorage() {
-    const indexResult = await chrome.storage.sync.get('bookmarkIndex');
-    const bookmarkIndex = indexResult.bookmarkIndex || {
-      totalCount: 0,
-      chunks: [],
-    };
-    if (bookmarkIndex.totalCount === 0) return [];
-
-    const BOOKMARK_CHUNK_PREFIX = 'bookmarks_chunk_';
-    const chunkKeys = bookmarkIndex.chunks.map(
-      (chunkId) => `${BOOKMARK_CHUNK_PREFIX}${chunkId}`
-    );
-    const chunksResult = await chrome.storage.sync.get(chunkKeys);
-
-    let loadedBookmarks = [];
-    bookmarkIndex.chunks.forEach((chunkId) => {
-      const chunkKey = `${BOOKMARK_CHUNK_PREFIX}${chunkId}`;
-      if (chunksResult[chunkKey]) {
-        loadedBookmarks = loadedBookmarks.concat(chunksResult[chunkKey]);
-      }
-    });
-    return loadedBookmarks;
-  }
-
-  async function saveAllBookmarksToStorage(bookmarks) {
+  // *** NEW: Function to restore a bookmark ***
+  async function restoreBookmark(bookmarkToRestore) {
+    console.log(`[Storage] restoreBookmark START for: ${bookmarkToRestore.id}`);
     try {
-      const BOOKMARK_CHUNK_PREFIX = 'bookmarks_chunk_';
-      const BOOKMARK_CHUNK_SIZE = 100; // Make sure this constant is available or defined
-      const chunkCount = Math.ceil(bookmarks.length / BOOKMARK_CHUNK_SIZE);
-      const newChunksData = {};
-      const newChunkIds = [];
+      const result = await chrome.storage.sync.get('timpstamp_bookmarks');
+      let bookmarks = result.timpstamp_bookmarks || [];
 
-      for (let i = 0; i < chunkCount; i++) {
-        const chunkId = i.toString();
-        const chunkKey = `${BOOKMARK_CHUNK_PREFIX}${chunkId}`;
-        const startIndex = i * BOOKMARK_CHUNK_SIZE;
-        const endIndex = Math.min(
-          startIndex + BOOKMARK_CHUNK_SIZE,
-          bookmarks.length
-        );
-        newChunksData[chunkKey] = bookmarks.slice(startIndex, endIndex);
-        newChunkIds.push(chunkId);
+      // Optional: Check if it somehow already exists (e.g., rapid undo/redo?) to avoid duplicates
+      if (bookmarks.some(b => b.id === bookmarkToRestore.id)) {
+        console.warn(`[Storage] Bookmark ${bookmarkToRestore.id} already exists. Aborting restore.`);
+        return false; // Indicate restore wasn't needed/performed
       }
 
-      // Remove old chunks that are no longer needed
-      const oldIndexResult = await chrome.storage.sync.get('bookmarkIndex');
-      const oldBookmarkIndex = oldIndexResult.bookmarkIndex || { chunks: [] };
-      const keysToRemove = oldBookmarkIndex.chunks
-        .filter((oldChunkId) => !newChunkIds.includes(oldChunkId))
-        .map((oldChunkId) => `${BOOKMARK_CHUNK_PREFIX}${oldChunkId}`);
+      bookmarks.push(bookmarkToRestore);
+      // Note: We're just adding to the end. Sorting will handle positioning on next load.
+      console.log(`[Storage] Added bookmark ${bookmarkToRestore.id}. New count: ${bookmarks.length}`);
 
-      if (keysToRemove.length > 0) {
-        await chrome.storage.sync.remove(keysToRemove);
-      }
-
-      // Save new chunks and the updated index
-      await chrome.storage.sync.set(newChunksData);
-      await chrome.storage.sync.set({
-        bookmarkIndex: {
-          totalCount: bookmarks.length,
-          chunks: newChunkIds,
-        },
-      });
-      return true;
+      await chrome.storage.sync.set({ 'timpstamp_bookmarks': bookmarks });
+      console.log(`[Storage] Saved bookmarks after restoring.`);
+      showNotification('Bookmark restored.', 'success', notificationArea);
+      return true; // Indicate success
     } catch (error) {
-      console.error('Error in saveAllBookmarksToStorage:', error);
-      return false;
+      console.error('[Storage] Error restoring bookmark:', error);
+      showNotification('Failed to restore bookmark.', 'error', notificationArea);
+      return false; // Indicate failure
     }
   }
 
-  // Debounced notes save listener (event delegation on bookmarksList)
+  async function saveNoteToBookmark(bookmarkId, noteText) {
+    console.log(`[Storage] saveNoteToBookmark START for: ${bookmarkId}`);
+    try {
+      const result = await chrome.storage.sync.get('timpstamp_bookmarks');
+      let bookmarks = result.timpstamp_bookmarks || [];
+      const bookmarkIndex = bookmarks.findIndex(b => b.id === bookmarkId);
+
+      if (bookmarkIndex !== -1) {
+        bookmarks[bookmarkIndex].notes = noteText;
+        await chrome.storage.sync.set({ 'timpstamp_bookmarks': bookmarks });
+        console.log(`[Storage] Note saved for bookmark ${bookmarkId}`);
+        // Optional: show success notification, maybe debounced
+        // showNotification('Note saved.', 'success', notificationArea);
+      } else {
+        console.warn(`[Storage] Bookmark ${bookmarkId} not found for saving note.`);
+      }
+    } catch (error) {
+      console.error('[Storage] Error saving note:', error);
+      showNotification('Failed to save note.', 'error', notificationArea);
+    }
+  }
+
+  // Debounced notes save listener using event delegation
   bookmarksList.addEventListener(
     'input',
     debounce(async (e) => {
       if (e.target && e.target.classList.contains('notes-textarea')) {
         const bookmarkId = e.target.dataset.bookmarkId;
         const newNotes = e.target.value;
-
-        const targetBookmark = allBookmarks.find((b) => b.id === bookmarkId);
-        if (targetBookmark) {
-          targetBookmark.notes = newNotes;
-          // Also update in storage
-          const success = await saveAllBookmarksToStorage(allBookmarks);
-          if (success) {
-            // Optionally show a subtle save confirmation, but debouncing often makes it implicit
-            console.log('Note saved for', bookmarkId);
-          } else {
-            showNotification('Error saving note.', 'error', notificationArea);
-          }
-        }
+        await saveNoteToBookmark(bookmarkId, newNotes);
       }
-    }, 500)
+    }, 500) // Adjust debounce time as needed
   );
 
-  // No FOLDER_STATE_KEY logic needed anymore
-});
+}); // Closing brace and parenthesis for DOMContentLoaded

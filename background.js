@@ -1,21 +1,17 @@
 // Constants for storage
-const BOOKMARK_CHUNK_SIZE = 100; // Number of bookmarks per chunk
-const BOOKMARK_CHUNK_PREFIX = 'bookmarks_chunk_';
+const BOOKMARKS_KEY = 'timpstamp_bookmarks'; // Single key for all bookmarks
 
 // Initialize storage
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.sync.get(['bookmarkIndex', 'shortcutEnabled'], (result) => {
-    if (!result.bookmarkIndex) {
-      // Initialize with an empty index
+  chrome.storage.sync.get([BOOKMARKS_KEY, 'shortcutEnabled'], (result) => {
+    if (!result[BOOKMARKS_KEY]) {
+      // Initialize with an empty array of bookmarks
       chrome.storage.sync.set(
         {
-          bookmarkIndex: {
-            totalCount: 0,
-            chunks: [],
-          },
+          [BOOKMARKS_KEY]: [] // Empty array - no bookmarks initially
         },
         () => {
-          console.log('Bookmark storage initialized with chunking support');
+          console.log('Bookmark storage initialized with direct storage');
         }
       );
     }
@@ -55,76 +51,31 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   } else if (request.type === 'CLEAR_ALL_BOOKMARKS') {
     handleClearAllBookmarks(sendResponse);
     return true; // Will respond asynchronously
+  } else if (request.type === 'DELETE_BOOKMARK') {
+    // Handle individual bookmark deletion
+    handleDeleteBookmark(request.bookmarkId, sendResponse);
+    return true; // Will respond asynchronously
   }
 });
 
-// Get all bookmarks from chunked storage
+// Get all bookmarks - new simplified approach
 async function getAllBookmarks() {
   try {
-    // Get the bookmark index
-    const indexResult = await chrome.storage.sync.get('bookmarkIndex');
-    const bookmarkIndex = indexResult.bookmarkIndex || {
-      totalCount: 0,
-      chunks: [],
-    };
-
-    if (bookmarkIndex.totalCount === 0) {
-      return [];
-    }
-
-    // Get all chunks
-    const chunkKeys = bookmarkIndex.chunks.map(
-      (chunkId) => `${BOOKMARK_CHUNK_PREFIX}${chunkId}`
-    );
-    const chunksResult = await chrome.storage.sync.get(chunkKeys);
-
-    // Combine all bookmarks from chunks
-    let allBookmarks = [];
-    bookmarkIndex.chunks.forEach((chunkId) => {
-      const chunkKey = `${BOOKMARK_CHUNK_PREFIX}${chunkId}`;
-      if (chunksResult[chunkKey]) {
-        allBookmarks = allBookmarks.concat(chunksResult[chunkKey]);
-      }
-    });
-
-    return allBookmarks;
+    // Get bookmarks directly
+    const result = await chrome.storage.sync.get(BOOKMARKS_KEY);
+    return result[BOOKMARKS_KEY] || [];
   } catch (error) {
     console.error('Error getting all bookmarks:', error);
     return [];
   }
 }
 
-// Save bookmarks to chunked storage
+// Save all bookmarks - new simplified approach
 async function saveAllBookmarks(bookmarks) {
   try {
-    // Calculate how many chunks we need
-    const chunkCount = Math.ceil(bookmarks.length / BOOKMARK_CHUNK_SIZE);
-    const chunks = [];
-
-    // Create chunks
-    for (let i = 0; i < chunkCount; i++) {
-      const chunkId = i.toString();
-      const chunkKey = `${BOOKMARK_CHUNK_PREFIX}${chunkId}`;
-      const startIndex = i * BOOKMARK_CHUNK_SIZE;
-      const endIndex = Math.min(
-        startIndex + BOOKMARK_CHUNK_SIZE,
-        bookmarks.length
-      );
-      const chunkBookmarks = bookmarks.slice(startIndex, endIndex);
-
-      // Save this chunk
-      await chrome.storage.sync.set({ [chunkKey]: chunkBookmarks });
-      chunks.push(chunkId);
-    }
-
-    // Update the bookmark index
-    await chrome.storage.sync.set({
-      bookmarkIndex: {
-        totalCount: bookmarks.length,
-        chunks: chunks,
-      },
-    });
-
+    // Save bookmarks directly
+    await chrome.storage.sync.set({ [BOOKMARKS_KEY]: bookmarks });
+    console.log('Saved', bookmarks.length, 'bookmarks to storage');
     return true;
   } catch (error) {
     console.error('Error saving all bookmarks:', error);
@@ -204,20 +155,57 @@ async function handleAddBookmark(bookmarkData, sendResponse) {
   }
 }
 
-// Handle clearing all bookmarks
+// Handle clearing all bookmarks - simplified approach
 async function handleClearAllBookmarks(sendResponse) {
   try {
-    const success = await saveAllBookmarks([]); // Save an empty array
-    if (success) {
-      console.log('All bookmarks cleared successfully.');
-      sendResponse({ success: true });
-    } else {
-      console.error('Failed to clear all bookmarks during save operation.');
-      sendResponse({ success: false, error: 'Failed to clear all bookmarks.' });
-    }
+    // Just save an empty array - much simpler with our direct storage approach
+    await chrome.storage.sync.set({ [BOOKMARKS_KEY]: [] });
+    console.log('All bookmarks cleared successfully.');
+    sendResponse({ success: true });
   } catch (error) {
     console.error('Error clearing all bookmarks:', error);
     sendResponse({ success: false, error: error.message });
+  }
+}
+
+// Handle individual bookmark deletion - completely rewritten with direct storage
+async function handleDeleteBookmark(bookmarkId, sendResponse) {
+  try {
+    console.log('Background script handling deletion of bookmark:', bookmarkId);
+    
+    // Step 1: Get all current bookmarks directly from storage to ensure fresh data
+    const result = await chrome.storage.sync.get(BOOKMARKS_KEY);
+    const allBookmarks = result[BOOKMARKS_KEY] || [];
+    console.log('Current bookmarks count:', allBookmarks.length);
+    
+    // Step 2: Filter out the deleted bookmark
+    const updatedBookmarks = allBookmarks.filter(b => b.id !== bookmarkId);
+    console.log('After filtering, bookmarks count:', updatedBookmarks.length);
+    
+    if (updatedBookmarks.length === allBookmarks.length) {
+      console.warn('Bookmark not found in current bookmarks:', bookmarkId);
+      // If bookmark wasn't found, we'll still continue with the save process
+      // to ensure storage is cleaned up properly
+    }
+    
+    // Step 3: Save the updated bookmarks directly and explicitly to sync storage
+    try {
+      await chrome.storage.sync.set({ [BOOKMARKS_KEY]: updatedBookmarks });
+      console.log('Bookmark successfully deleted and saved to sync storage:', bookmarkId);
+      
+      // Verify the changes were saved correctly
+      const verifyResult = await chrome.storage.sync.get(BOOKMARKS_KEY);
+      const verifiedBookmarks = verifyResult[BOOKMARKS_KEY] || [];
+      console.log('Verified bookmarks count after deletion:', verifiedBookmarks.length);
+      
+      if (sendResponse) sendResponse({ success: true });
+    } catch (saveError) {
+      console.error('Error saving updated bookmarks to sync storage:', saveError);
+      if (sendResponse) sendResponse({ success: false, error: 'Failed to save updated bookmarks to storage' });
+    }
+  } catch (error) {
+    console.error('Error handling bookmark deletion:', error);
+    if (sendResponse) sendResponse({ success: false, error: error.message });
   }
 }
 
