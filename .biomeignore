@@ -1,0 +1,13 @@
+node_modules/
+bun.lockb
+icons/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+.claude/
+.cursor/
+LICENSE
+README.md
+*.md

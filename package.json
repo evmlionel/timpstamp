@@ -3,7 +3,13 @@
   "version": "1.0.0",
   "description": "A Chrome extension to bookmark YouTube timestamps",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint --write .",
+    "format": "biome format .",
+    "format:fix": "biome format --write .",
+    "check": "biome check .",
+    "check:fix": "biome check --write ."
   },
   "keywords": [
     "chrome-extension",
@@ -13,6 +19,8 @@
   ],
   "author": "Your Name",
   "license": "MIT",
-  "dependencies": {
+  "dependencies": {},
+  "devDependencies": {
+    "@biomejs/biome": "^2.0.0"
   }
 }
