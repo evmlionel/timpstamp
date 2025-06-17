@@ -1,6 +1,6 @@
 /* Styles for the popup UI */
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
   width: 400px;
   min-height: 150px;
   max-height: 600px;
@@ -91,12 +91,12 @@ h2 {
   background: white;
   border: 1px solid #e0e0e0;
   margin-bottom: 12px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .bookmark-card:hover {
   border-color: #cccccc;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.08);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
 }
 
 .thumbnail-container {
@@ -265,7 +265,7 @@ h2 {
   border: 1px solid #ddd;
   border-radius: 4px;
   margin-bottom: 8px;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .folder-header {
@@ -281,7 +281,7 @@ h2 {
 }
 
 .folder-header::before {
-  content: '▶';
+  content: "▶";
   position: absolute;
   left: 12px;
   font-size: 0.8em;
@@ -290,11 +290,11 @@ h2 {
 }
 
 .folder-header:not(.collapsed)::before {
-  content: '▼';
+  content: "▼";
 }
 
 .folder-header.collapsed::before {
-  content: '▶';
+  content: "▶";
 }
 
 .folder-header span {
@@ -450,7 +450,9 @@ body::-webkit-scrollbar-thumb:hover {
   font-size: 13px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
   opacity: 0;
-  transition: opacity 0.3s ease-in-out, transform 0.3s ease-in-out;
+  transition:
+    opacity 0.3s ease-in-out,
+    transform 0.3s ease-in-out;
   visibility: hidden;
   min-width: 180px;
   text-align: center;

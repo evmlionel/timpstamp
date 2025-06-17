@@ -18,12 +18,12 @@ export const formatTime = (seconds) => {
   const hrs = Math.floor(seconds / 3600);
   const mins = Math.floor((seconds % 3600) / 60);
   const secs = Math.floor(seconds % 60);
-  
+
   const parts = [];
   if (hrs > 0) parts.push(String(hrs).padStart(2, '0'));
   parts.push(String(mins).padStart(2, '0'));
   parts.push(String(secs).padStart(2, '0'));
-  
+
   return parts.join(':');
 };
 
@@ -62,7 +62,7 @@ export const showNotification = (message, type = 'success') => {
 // Lazy load images using IntersectionObserver
 export const setupLazyLoading = () => {
   const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
+    entries.forEach((entry) => {
       if (entry.isIntersecting) {
         const img = entry.target;
         img.src = img.dataset.src;

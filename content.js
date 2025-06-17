@@ -43,7 +43,7 @@ function saveTimestamp() {
     // More robust title extraction
     let videoTitle = 'Unknown Title';
     const titleElement = document.querySelector(
-        'h1.ytd-watch-metadata yt-formatted-string#title, ' + // Refined primary selector
+      'h1.ytd-watch-metadata yt-formatted-string#title, ' + // Refined primary selector
         'h1.title.ytd-video-primary-info-renderer yt-formatted-string, ' + // Refined secondary selector
         '#container > h1.title > yt-formatted-string' // Common alternative structure
     );
@@ -52,11 +52,15 @@ function saveTimestamp() {
     } else {
       // Fallback to document title if specific element not found
       if (document.title.endsWith(' - YouTube')) {
-          videoTitle = document.title.substring(0, document.title.length - ' - YouTube'.length).trim();
+        videoTitle = document.title
+          .substring(0, document.title.length - ' - YouTube'.length)
+          .trim();
       } else {
-          videoTitle = document.title.trim(); // Use the full title if it doesn't end as expected
+        videoTitle = document.title.trim(); // Use the full title if it doesn't end as expected
       }
-      console.warn('Could not find specific title element, using document.title as fallback.');
+      console.warn(
+        'Could not find specific title element, using document.title as fallback.'
+      );
     }
 
     const formattedTime =
@@ -90,7 +94,11 @@ function saveTimestamp() {
         if (response && response.success) {
           showNotification(response.message || 'Timestamp saved! 🎉');
         } else {
-          showNotification(response && response.error ? response.error : 'Failed to save timestamp ❌');
+          showNotification(
+            response && response.error
+              ? response.error
+              : 'Failed to save timestamp ❌'
+          );
         }
       }
     );

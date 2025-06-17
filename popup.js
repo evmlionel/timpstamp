@@ -1,8 +1,8 @@
 import {
   debounce,
   formatTime,
-  showNotification,
   setupLazyLoading,
+  showNotification,
 } from './src/utils.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -69,10 +69,10 @@ document.addEventListener('DOMContentLoaded', () => {
       // Get bookmarks using the new direct storage approach
       const result = await chrome.storage.sync.get('timpstamp_bookmarks');
       const bookmarks = result.timpstamp_bookmarks || [];
-      
+
       // Store bookmarks in global variable
       allBookmarks = bookmarks;
-      
+
       // Update UI
       loadingState.style.display = 'none';
       sortAndRenderBookmarks(); // Sort and render the bookmarks
@@ -217,7 +217,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const deleteBtn = div.querySelector('.delete-btn');
     deleteBtn.addEventListener('click', (e) => {
-      console.log('[Delete Flow] Delete button clicked for:', deleteBtn.dataset.bookmarkId);
+      console.log(
+        '[Delete Flow] Delete button clicked for:',
+        deleteBtn.dataset.bookmarkId
+      );
       const idToDelete = deleteBtn.dataset.bookmarkId;
       initiateDeleteWithUndo(idToDelete);
     });
@@ -281,21 +284,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // *** NEW: Function to orchestrate instant deletion and then show undo ***
   async function initiateDeleteWithUndo(bookmarkId) {
-    console.log(`[Delete Flow] initiateDeleteWithUndo START for: ${bookmarkId}`);
+    console.log(
+      `[Delete Flow] initiateDeleteWithUndo START for: ${bookmarkId}`
+    );
     const deletedBookmark = await deleteBookmarkFromStorage(bookmarkId); // Delete first
 
     if (deletedBookmark) {
-      console.log(`[Delete Flow] Bookmark ${bookmarkId} deleted. Reloading list and showing undo.`);
+      console.log(
+        `[Delete Flow] Bookmark ${bookmarkId} deleted. Reloading list and showing undo.`
+      );
       loadAllData(); // Refresh UI immediately *after* successful deletion
       showUndoNotification(deletedBookmark); // Show undo option, passing the deleted data
     } else {
-      console.log(`[Delete Flow] Bookmark ${bookmarkId} not found or failed to delete. Not showing undo.`);
+      console.log(
+        `[Delete Flow] Bookmark ${bookmarkId} not found or failed to delete. Not showing undo.`
+      );
       loadAllData(); // Still refresh UI in case of partial failure state
     }
   }
 
   function showUndoNotification(deletedBookmarkData) {
-    console.log('[Undo Flow] showUndoNotification called for potential restore of:', deletedBookmarkData.id);
+    console.log(
+      '[Undo Flow] showUndoNotification called for potential restore of:',
+      deletedBookmarkData.id
+    );
     // Clear any previous undo state/timeout
     if (undoState.timeoutId) {
       clearTimeout(undoState.timeoutId);
@@ -308,7 +320,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Set timeout to hide notification and clear state
     undoState.timeoutId = setTimeout(() => {
-      console.log('[Undo Flow] Undo timeout expired for:', undoState.bookmarkToRestore?.id);
+      console.log(
+        '[Undo Flow] Undo timeout expired for:',
+        undoState.bookmarkToRestore?.id
+      );
       undoNotification.classList.remove('show');
       undoState = { bookmarkToRestore: null, timeoutId: null }; // Just clear state
     }, 5000); // 5 seconds to undo
@@ -330,7 +345,9 @@ document.addEventListener('DOMContentLoaded', () => {
       await restoreBookmark(bookmarkToRestore);
       loadAllData(); // Refresh UI after successful restore
     } else {
-      console.warn('[Undo Flow] Undo clicked but no bookmark data found in state.');
+      console.warn(
+        '[Undo Flow] Undo clicked but no bookmark data found in state.'
+      );
     }
   }
 
@@ -348,19 +365,25 @@ document.addEventListener('DOMContentLoaded', () => {
       let bookmarks = result.timpstamp_bookmarks || [];
 
       // *** CHANGE: Find the bookmark first to return its data ***
-      deletedBookmark = bookmarks.find(b => b.id === bookmarkId) || null;
+      deletedBookmark = bookmarks.find((b) => b.id === bookmarkId) || null;
 
-      bookmarks = bookmarks.filter(b => b.id !== bookmarkId);
+      bookmarks = bookmarks.filter((b) => b.id !== bookmarkId);
       const finalLength = bookmarks.length;
 
       if (bookmarks.length === 0) {
-        console.log(`[Storage] Bookmarks after filtering ${bookmarkId} (removed: 1, new count: ${finalLength})`);
+        console.log(
+          `[Storage] Bookmarks after filtering ${bookmarkId} (removed: 1, new count: ${finalLength})`
+        );
       } else {
-        console.log(`[Storage] Bookmarks after filtering ${bookmarkId} (removed: 1, new count: ${finalLength})`);
+        console.log(
+          `[Storage] Bookmarks after filtering ${bookmarkId} (removed: 1, new count: ${finalLength})`
+        );
       }
 
-      console.log(`[Storage] Saving updated bookmarks back to storage (count: ${finalLength})`);
-      await chrome.storage.sync.set({ 'timpstamp_bookmarks': bookmarks });
+      console.log(
+        `[Storage] Saving updated bookmarks back to storage (count: ${finalLength})`
+      );
+      await chrome.storage.sync.set({ timpstamp_bookmarks: bookmarks });
       console.log(`[Storage] Saved updated bookmarks.`);
       showNotification('Bookmark deleted.', 'success', notificationArea);
       return deletedBookmark; // *** CHANGE: Return the data of the deleted item ***
@@ -376,25 +399,33 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log(`[Storage] restoreBookmark START for: ${bookmarkToRestore.id}`);
     try {
       const result = await chrome.storage.sync.get('timpstamp_bookmarks');
-      let bookmarks = result.timpstamp_bookmarks || [];
+      const bookmarks = result.timpstamp_bookmarks || [];
 
       // Optional: Check if it somehow already exists (e.g., rapid undo/redo?) to avoid duplicates
-      if (bookmarks.some(b => b.id === bookmarkToRestore.id)) {
-        console.warn(`[Storage] Bookmark ${bookmarkToRestore.id} already exists. Aborting restore.`);
+      if (bookmarks.some((b) => b.id === bookmarkToRestore.id)) {
+        console.warn(
+          `[Storage] Bookmark ${bookmarkToRestore.id} already exists. Aborting restore.`
+        );
         return false; // Indicate restore wasn't needed/performed
       }
 
       bookmarks.push(bookmarkToRestore);
       // Note: We're just adding to the end. Sorting will handle positioning on next load.
-      console.log(`[Storage] Added bookmark ${bookmarkToRestore.id}. New count: ${bookmarks.length}`);
+      console.log(
+        `[Storage] Added bookmark ${bookmarkToRestore.id}. New count: ${bookmarks.length}`
+      );
 
-      await chrome.storage.sync.set({ 'timpstamp_bookmarks': bookmarks });
+      await chrome.storage.sync.set({ timpstamp_bookmarks: bookmarks });
       console.log(`[Storage] Saved bookmarks after restoring.`);
       showNotification('Bookmark restored.', 'success', notificationArea);
       return true; // Indicate success
     } catch (error) {
       console.error('[Storage] Error restoring bookmark:', error);
-      showNotification('Failed to restore bookmark.', 'error', notificationArea);
+      showNotification(
+        'Failed to restore bookmark.',
+        'error',
+        notificationArea
+      );
       return false; // Indicate failure
     }
   }
@@ -403,17 +434,19 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log(`[Storage] saveNoteToBookmark START for: ${bookmarkId}`);
     try {
       const result = await chrome.storage.sync.get('timpstamp_bookmarks');
-      let bookmarks = result.timpstamp_bookmarks || [];
-      const bookmarkIndex = bookmarks.findIndex(b => b.id === bookmarkId);
+      const bookmarks = result.timpstamp_bookmarks || [];
+      const bookmarkIndex = bookmarks.findIndex((b) => b.id === bookmarkId);
 
       if (bookmarkIndex !== -1) {
         bookmarks[bookmarkIndex].notes = noteText;
-        await chrome.storage.sync.set({ 'timpstamp_bookmarks': bookmarks });
+        await chrome.storage.sync.set({ timpstamp_bookmarks: bookmarks });
         console.log(`[Storage] Note saved for bookmark ${bookmarkId}`);
         // Optional: show success notification, maybe debounced
         // showNotification('Note saved.', 'success', notificationArea);
       } else {
-        console.warn(`[Storage] Bookmark ${bookmarkId} not found for saving note.`);
+        console.warn(
+          `[Storage] Bookmark ${bookmarkId} not found for saving note.`
+        );
       }
     } catch (error) {
       console.error('[Storage] Error saving note:', error);
@@ -432,5 +465,4 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }, 500) // Adjust debounce time as needed
   );
-
 }); // Closing brace and parenthesis for DOMContentLoaded

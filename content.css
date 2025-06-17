@@ -22,10 +22,10 @@
   padding: 12px 24px;
   border-radius: 4px;
   z-index: 999999; /* High z-index to appear above most elements */
-  font-family: "YouTube Sans","Roboto",sans-serif;
+  font-family: "YouTube Sans", "Roboto", sans-serif;
   font-size: 14px;
   font-weight: 500;
-  box-shadow: 0 4px 32px rgba(0,0,0,0.4);
+  box-shadow: 0 4px 32px rgba(0, 0, 0, 0.4);
   border: 1px solid var(--yt-spec-10-percent-layer, rgba(255, 255, 255, 0.1));
   pointer-events: none; /* Don't interfere with clicks */
   opacity: 1;

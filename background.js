@@ -8,7 +8,7 @@ chrome.runtime.onInstalled.addListener(() => {
       // Initialize with an empty array of bookmarks
       chrome.storage.sync.set(
         {
-          [BOOKMARKS_KEY]: [] // Empty array - no bookmarks initially
+          [BOOKMARKS_KEY]: [], // Empty array - no bookmarks initially
         },
         () => {
           console.log('Bookmark storage initialized with direct storage');
@@ -115,7 +115,7 @@ async function handleAddBookmark(bookmarkData, sendResponse) {
         url: bookmarkData.url,
         // videoId is part of bookmarkData and will be spread via ...bookmarkData if not explicitly listed
         // Ensure videoId from bookmarkData is used if it's part of the spread
-        videoId: bookmarkData.videoId, 
+        videoId: bookmarkData.videoId,
         savedAt: Date.now(), // Update the savedAt/updatedAt timestamp
       };
       console.log('Updated existing bookmark:', videoIdForBookmark);
@@ -125,9 +125,9 @@ async function handleAddBookmark(bookmarkData, sendResponse) {
       const newBookmark = {
         ...bookmarkData, // Contains videoId, videoTitle, timestamp, formattedTime, url
         id: videoIdForBookmark, // Set id to videoId
-        createdAt: Date.now(),   // Timestamp for when it was first bookmarked
-        savedAt: Date.now(),     // Timestamp for this specific save/update
-        notes: '',             // Initialize notes
+        createdAt: Date.now(), // Timestamp for when it was first bookmarked
+        savedAt: Date.now(), // Timestamp for this specific save/update
+        notes: '', // Initialize notes
       };
       bookmarks.push(newBookmark);
       console.log('Added new bookmark:', newBookmark);
@@ -136,18 +136,34 @@ async function handleAddBookmark(bookmarkData, sendResponse) {
     // Save updated bookmarks using chunking
     const saveResult = await saveAllBookmarks(bookmarks);
     if (saveResult) {
-      console.log('Bookmark operation successful for video:', videoIdForBookmark);
+      console.log(
+        'Bookmark operation successful for video:',
+        videoIdForBookmark
+      );
       // Send a more specific message
-      sendResponse({ 
-        success: true, 
-        message: existingBookmarkIndex !== -1 ? 'Timestamp updated! 🎉' : 'Timestamp saved! 🎉' 
+      sendResponse({
+        success: true,
+        message:
+          existingBookmarkIndex !== -1
+            ? 'Timestamp updated! 🎉'
+            : 'Timestamp saved! 🎉',
       });
     } else {
-      console.error('Failed to save bookmark changes for video:', videoIdForBookmark);
-      sendResponse({ success: false, error: 'Failed to save bookmark changes' });
+      console.error(
+        'Failed to save bookmark changes for video:',
+        videoIdForBookmark
+      );
+      sendResponse({
+        success: false,
+        error: 'Failed to save bookmark changes',
+      });
     }
   } catch (error) {
-    console.error('Error processing bookmark for video:', videoIdForBookmark, error);
+    console.error(
+      'Error processing bookmark for video:',
+      videoIdForBookmark,
+      error
+    );
     sendResponse({
       success: false,
       error: error.message,
@@ -172,36 +188,49 @@ async function handleClearAllBookmarks(sendResponse) {
 async function handleDeleteBookmark(bookmarkId, sendResponse) {
   try {
     console.log('Background script handling deletion of bookmark:', bookmarkId);
-    
+
     // Step 1: Get all current bookmarks directly from storage to ensure fresh data
     const result = await chrome.storage.sync.get(BOOKMARKS_KEY);
     const allBookmarks = result[BOOKMARKS_KEY] || [];
     console.log('Current bookmarks count:', allBookmarks.length);
-    
+
     // Step 2: Filter out the deleted bookmark
-    const updatedBookmarks = allBookmarks.filter(b => b.id !== bookmarkId);
+    const updatedBookmarks = allBookmarks.filter((b) => b.id !== bookmarkId);
     console.log('After filtering, bookmarks count:', updatedBookmarks.length);
-    
+
     if (updatedBookmarks.length === allBookmarks.length) {
       console.warn('Bookmark not found in current bookmarks:', bookmarkId);
       // If bookmark wasn't found, we'll still continue with the save process
       // to ensure storage is cleaned up properly
     }
-    
+
     // Step 3: Save the updated bookmarks directly and explicitly to sync storage
     try {
       await chrome.storage.sync.set({ [BOOKMARKS_KEY]: updatedBookmarks });
-      console.log('Bookmark successfully deleted and saved to sync storage:', bookmarkId);
-      
+      console.log(
+        'Bookmark successfully deleted and saved to sync storage:',
+        bookmarkId
+      );
+
       // Verify the changes were saved correctly
       const verifyResult = await chrome.storage.sync.get(BOOKMARKS_KEY);
       const verifiedBookmarks = verifyResult[BOOKMARKS_KEY] || [];
-      console.log('Verified bookmarks count after deletion:', verifiedBookmarks.length);
-      
+      console.log(
+        'Verified bookmarks count after deletion:',
+        verifiedBookmarks.length
+      );
+
       if (sendResponse) sendResponse({ success: true });
     } catch (saveError) {
-      console.error('Error saving updated bookmarks to sync storage:', saveError);
-      if (sendResponse) sendResponse({ success: false, error: 'Failed to save updated bookmarks to storage' });
+      console.error(
+        'Error saving updated bookmarks to sync storage:',
+        saveError
+      );
+      if (sendResponse)
+        sendResponse({
+          success: false,
+          error: 'Failed to save updated bookmarks to storage',
+        });
     }
   } catch (error) {
     console.error('Error handling bookmark deletion:', error);
