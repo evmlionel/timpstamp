@@ -28,9 +28,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
     // Perform a minimal operation to keep the service worker alive, e.g., check storage
     chrome.storage.sync.get(null, (_items) => {
       if (chrome.runtime.lastError) {
-      } else {
-        // Optional: log successful keep-alive check
-        // console.log('Keep-alive check successful.');
+        // Handle error silently - keep-alive check failed
       }
     });
   }
@@ -141,7 +139,6 @@ async function handleAddBookmark(bookmarkData, sendResponse) {
     });
   }
 }
-
 
 // Handle individual bookmark deletion - completely rewritten with direct storage
 async function handleDeleteBookmark(bookmarkId, sendResponse) {

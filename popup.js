@@ -11,7 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let allBookmarks = []; // Store all bookmarks for filtering/sorting
   let currentSort = 'newest'; // Default sort
 
-
   async function loadAllData() {
     try {
       // Get shortcut setting
@@ -87,7 +86,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const bookmarkElement = createBookmarkElement(bookmark, index);
       bookmarksList.appendChild(bookmarkElement);
     });
-
   }
 
   function sortAndRenderBookmarks() {
@@ -270,7 +268,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (bookmarkToRestore) {
       await restoreBookmark(bookmarkToRestore);
       loadAllData(); // Refresh UI after successful restore
-    } else {
     }
   }
 
@@ -291,9 +288,6 @@ document.addEventListener('DOMContentLoaded', () => {
       bookmarks = bookmarks.filter((b) => b.id !== bookmarkId);
       const _finalLength = bookmarks.length;
 
-      if (bookmarks.length === 0) {
-      } else {
-      }
       await chrome.storage.sync.set({ timpstamp_bookmarks: bookmarks });
       showNotification('Bookmark deleted.', 'success', notificationArea);
       return deletedBookmark; // *** CHANGE: Return the data of the deleted item ***
@@ -339,8 +333,7 @@ document.addEventListener('DOMContentLoaded', () => {
         bookmarks[bookmarkIndex].notes = noteText;
         await chrome.storage.sync.set({ timpstamp_bookmarks: bookmarks });
         // Optional: show success notification, maybe debounced
-        // showNotification('Note saved.', 'success', notificationArea);
-      } else {
+        showNotification('Note saved.', 'success', notificationArea);
       }
     } catch (_error) {
       showNotification('Failed to save note.', 'error', notificationArea);
