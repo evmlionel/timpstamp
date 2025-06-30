@@ -9,7 +9,6 @@ body {
   background-color: #ffffff;
   color: #1f2937;
   margin: 0;
-  overflow: hidden;
 }
 
 .header {
@@ -140,10 +139,6 @@ h2 {
   color: #111827;
 }
 
-.video-title-link:hover .video-title {
-  color: #2563eb;
-}
-
 .video-title {
   font-size: 14px;
   font-weight: 600;
@@ -154,6 +149,12 @@ h2 {
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: #111827;
+  margin: 4px 0;
+}
+
+.video-title-link:hover .video-title {
+  color: #2563eb;
 }
 
 .bookmark-details-row {

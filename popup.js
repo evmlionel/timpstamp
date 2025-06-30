@@ -1,9 +1,4 @@
-import {
-  debounce,
-  formatTime,
-  setupLazyLoading,
-  showNotification,
-} from './src/utils.js';
+import { debounce, formatTime, showNotification } from './src/utils.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const bookmarksList = document.getElementById('bookmarksList');
@@ -28,10 +23,6 @@ document.addEventListener('DOMContentLoaded', () => {
         { type: 'CLEAR_ALL_BOOKMARKS' },
         (response) => {
           if (chrome.runtime.lastError) {
-            console.error(
-              'Error clearing bookmarks:',
-              chrome.runtime.lastError.message
-            );
             showNotification(
               'Error clearing bookmarks. Please try again.',
               'error',
@@ -39,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
             );
             return;
           }
-          if (response && response.success) {
+          if (response?.success) {
             allBookmarks = []; // Clear local cache
             renderBookmarks(); // Refresh the UI to show empty state
             showNotification(
@@ -48,11 +39,9 @@ document.addEventListener('DOMContentLoaded', () => {
               notificationArea
             );
           } else {
-            const errorMessage =
-              response && response.error
-                ? response.error
-                : 'Failed to clear bookmarks.';
-            console.error('Failed to clear bookmarks:', errorMessage);
+            const errorMessage = response?.error
+              ? response.error
+              : 'Failed to clear bookmarks.';
             showNotification(errorMessage, 'error', notificationArea);
           }
         }
@@ -76,8 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Update UI
       loadingState.style.display = 'none';
       sortAndRenderBookmarks(); // Sort and render the bookmarks
-    } catch (error) {
-      console.error('Error loading data:', error);
+    } catch (_error) {
       loadingState.style.display = 'none';
       emptyState.textContent = 'Error loading bookmarks. Please try again.';
       emptyState.style.display = 'block';
@@ -148,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // createBookmarkElement function remains largely the same but will be appended directly
   // Ensure createBookmarkElement is defined before this point if it's not hoisted, or move its definition up
-  function createBookmarkElement(bookmark, index) {
+  function createBookmarkElement(bookmark, _index) {
     const thumbnailUrl = `https://i.ytimg.com/vi/${bookmark.videoId}/hqdefault.jpg`;
     const div = document.createElement('div');
     // Assign a class for general bookmark styling, maybe 'bookmark-card'
@@ -206,21 +194,17 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const shareBtn = div.querySelector('.share-btn');
-    shareBtn.addEventListener('click', async (e) => {
+    shareBtn.addEventListener('click', async (_e) => {
       try {
         await navigator.clipboard.writeText(shareBtn.dataset.url);
         showNotification('Link copied!', 'success', notificationArea);
-      } catch (err) {
+      } catch (_err) {
         showNotification('Failed to copy link', 'error', notificationArea);
       }
     });
 
     const deleteBtn = div.querySelector('.delete-btn');
-    deleteBtn.addEventListener('click', (e) => {
-      console.log(
-        '[Delete Flow] Delete button clicked for:',
-        deleteBtn.dataset.bookmarkId
-      );
+    deleteBtn.addEventListener('click', (_e) => {
       const idToDelete = deleteBtn.dataset.bookmarkId;
       initiateDeleteWithUndo(idToDelete);
     });
@@ -284,30 +268,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // *** NEW: Function to orchestrate instant deletion and then show undo ***
   async function initiateDeleteWithUndo(bookmarkId) {
-    console.log(
-      `[Delete Flow] initiateDeleteWithUndo START for: ${bookmarkId}`
-    );
     const deletedBookmark = await deleteBookmarkFromStorage(bookmarkId); // Delete first
 
     if (deletedBookmark) {
-      console.log(
-        `[Delete Flow] Bookmark ${bookmarkId} deleted. Reloading list and showing undo.`
-      );
       loadAllData(); // Refresh UI immediately *after* successful deletion
       showUndoNotification(deletedBookmark); // Show undo option, passing the deleted data
     } else {
-      console.log(
-        `[Delete Flow] Bookmark ${bookmarkId} not found or failed to delete. Not showing undo.`
-      );
       loadAllData(); // Still refresh UI in case of partial failure state
     }
   }
 
   function showUndoNotification(deletedBookmarkData) {
-    console.log(
-      '[Undo Flow] showUndoNotification called for potential restore of:',
-      deletedBookmarkData.id
-    );
     // Clear any previous undo state/timeout
     if (undoState.timeoutId) {
       clearTimeout(undoState.timeoutId);
@@ -320,10 +291,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Set timeout to hide notification and clear state
     undoState.timeoutId = setTimeout(() => {
-      console.log(
-        '[Undo Flow] Undo timeout expired for:',
-        undoState.bookmarkToRestore?.id
-      );
       undoNotification.classList.remove('show');
       undoState = { bookmarkToRestore: null, timeoutId: null }; // Just clear state
     }, 5000); // 5 seconds to undo
@@ -331,7 +298,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // *** NEW: Separate function to handle the Undo button click ***
   async function handleUndoClick() {
-    console.log('[Undo Flow] Undo button clicked.');
     if (undoState.timeoutId) {
       clearTimeout(undoState.timeoutId); // Prevent timeout from clearing state
     }
@@ -341,13 +307,9 @@ document.addEventListener('DOMContentLoaded', () => {
     undoState = { bookmarkToRestore: null, timeoutId: null }; // Clear state immediately
 
     if (bookmarkToRestore) {
-      console.log('[Undo Flow] Restoring bookmark:', bookmarkToRestore.id);
       await restoreBookmark(bookmarkToRestore);
       loadAllData(); // Refresh UI after successful restore
     } else {
-      console.warn(
-        '[Undo Flow] Undo clicked but no bookmark data found in state.'
-      );
     }
   }
 
@@ -357,10 +319,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // --- Storage Interaction --- //
 
   async function deleteBookmarkFromStorage(bookmarkId) {
-    console.log(`[Storage] deleteBookmarkFromStorage START for: ${bookmarkId}`);
     let deletedBookmark = null; // To store the data of the bookmark being deleted
     try {
-      console.log(`[Storage] Fetching bookmarks before deleting ${bookmarkId}`);
       const result = await chrome.storage.sync.get('timpstamp_bookmarks');
       let bookmarks = result.timpstamp_bookmarks || [];
 
@@ -368,27 +328,15 @@ document.addEventListener('DOMContentLoaded', () => {
       deletedBookmark = bookmarks.find((b) => b.id === bookmarkId) || null;
 
       bookmarks = bookmarks.filter((b) => b.id !== bookmarkId);
-      const finalLength = bookmarks.length;
+      const _finalLength = bookmarks.length;
 
       if (bookmarks.length === 0) {
-        console.log(
-          `[Storage] Bookmarks after filtering ${bookmarkId} (removed: 1, new count: ${finalLength})`
-        );
       } else {
-        console.log(
-          `[Storage] Bookmarks after filtering ${bookmarkId} (removed: 1, new count: ${finalLength})`
-        );
       }
-
-      console.log(
-        `[Storage] Saving updated bookmarks back to storage (count: ${finalLength})`
-      );
       await chrome.storage.sync.set({ timpstamp_bookmarks: bookmarks });
-      console.log(`[Storage] Saved updated bookmarks.`);
       showNotification('Bookmark deleted.', 'success', notificationArea);
       return deletedBookmark; // *** CHANGE: Return the data of the deleted item ***
-    } catch (error) {
-      console.error('[Storage] Error deleting bookmark:', error);
+    } catch (_error) {
       showNotification('Failed to delete bookmark.', 'error', notificationArea);
       return null; // Indicate failure
     }
@@ -396,31 +344,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // *** NEW: Function to restore a bookmark ***
   async function restoreBookmark(bookmarkToRestore) {
-    console.log(`[Storage] restoreBookmark START for: ${bookmarkToRestore.id}`);
     try {
       const result = await chrome.storage.sync.get('timpstamp_bookmarks');
       const bookmarks = result.timpstamp_bookmarks || [];
 
       // Optional: Check if it somehow already exists (e.g., rapid undo/redo?) to avoid duplicates
       if (bookmarks.some((b) => b.id === bookmarkToRestore.id)) {
-        console.warn(
-          `[Storage] Bookmark ${bookmarkToRestore.id} already exists. Aborting restore.`
-        );
         return false; // Indicate restore wasn't needed/performed
       }
 
       bookmarks.push(bookmarkToRestore);
-      // Note: We're just adding to the end. Sorting will handle positioning on next load.
-      console.log(
-        `[Storage] Added bookmark ${bookmarkToRestore.id}. New count: ${bookmarks.length}`
-      );
 
       await chrome.storage.sync.set({ timpstamp_bookmarks: bookmarks });
-      console.log(`[Storage] Saved bookmarks after restoring.`);
       showNotification('Bookmark restored.', 'success', notificationArea);
       return true; // Indicate success
-    } catch (error) {
-      console.error('[Storage] Error restoring bookmark:', error);
+    } catch (_error) {
       showNotification(
         'Failed to restore bookmark.',
         'error',
@@ -431,7 +369,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function saveNoteToBookmark(bookmarkId, noteText) {
-    console.log(`[Storage] saveNoteToBookmark START for: ${bookmarkId}`);
     try {
       const result = await chrome.storage.sync.get('timpstamp_bookmarks');
       const bookmarks = result.timpstamp_bookmarks || [];
@@ -440,16 +377,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (bookmarkIndex !== -1) {
         bookmarks[bookmarkIndex].notes = noteText;
         await chrome.storage.sync.set({ timpstamp_bookmarks: bookmarks });
-        console.log(`[Storage] Note saved for bookmark ${bookmarkId}`);
         // Optional: show success notification, maybe debounced
         // showNotification('Note saved.', 'success', notificationArea);
       } else {
-        console.warn(
-          `[Storage] Bookmark ${bookmarkId} not found for saving note.`
-        );
       }
-    } catch (error) {
-      console.error('[Storage] Error saving note:', error);
+    } catch (_error) {
       showNotification('Failed to save note.', 'error', notificationArea);
     }
   }
@@ -458,7 +390,7 @@ document.addEventListener('DOMContentLoaded', () => {
   bookmarksList.addEventListener(
     'input',
     debounce(async (e) => {
-      if (e.target && e.target.classList.contains('notes-textarea')) {
+      if (e.target?.classList.contains('notes-textarea')) {
         const bookmarkId = e.target.dataset.bookmarkId;
         const newNotes = e.target.value;
         await saveNoteToBookmark(bookmarkId, newNotes);

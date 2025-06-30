@@ -1,6 +1,3 @@
-// YouTube Timestamp Bookmarker Extension
-console.log('Timpstamp Extension Loaded');
-
 let currentVideoId = null;
 let shortcutEnabled = true; // Default to enabled, will be updated from storage
 
@@ -8,7 +5,6 @@ let shortcutEnabled = true; // Default to enabled, will be updated from storage
 function loadShortcutSetting() {
   chrome.storage.sync.get('shortcutEnabled', (result) => {
     shortcutEnabled = result.shortcutEnabled !== false; // Default true if undefined
-    console.log('Shortcut setting loaded:', shortcutEnabled);
   });
 }
 
@@ -16,7 +12,6 @@ function loadShortcutSetting() {
 chrome.storage.onChanged.addListener((changes, namespace) => {
   if (namespace === 'sync' && changes.shortcutEnabled) {
     shortcutEnabled = changes.shortcutEnabled.newValue !== false;
-    console.log('Shortcut setting updated:', shortcutEnabled);
   }
 });
 
@@ -47,7 +42,7 @@ function saveTimestamp() {
         'h1.title.ytd-video-primary-info-renderer yt-formatted-string, ' + // Refined secondary selector
         '#container > h1.title > yt-formatted-string' // Common alternative structure
     );
-    if (titleElement && titleElement.textContent) {
+    if (titleElement?.textContent) {
       videoTitle = titleElement.textContent.trim();
     } else {
       // Fallback to document title if specific element not found
@@ -58,9 +53,6 @@ function saveTimestamp() {
       } else {
         videoTitle = document.title.trim(); // Use the full title if it doesn't end as expected
       }
-      console.warn(
-        'Could not find specific title element, using document.title as fallback.'
-      );
     }
 
     const formattedTime =
@@ -86,24 +78,20 @@ function saveTimestamp() {
       },
       (response) => {
         if (chrome.runtime.lastError) {
-          console.error('Failed to save bookmark:', chrome.runtime.lastError);
           showNotification('Failed to save timestamp ❌');
           return;
         }
 
-        if (response && response.success) {
+        if (response?.success) {
           showNotification(response.message || 'Timestamp saved! 🎉');
         } else {
           showNotification(
-            response && response.error
-              ? response.error
-              : 'Failed to save timestamp ❌'
+            response?.error ? response.error : 'Failed to save timestamp ❌'
           );
         }
       }
     );
-  } catch (error) {
-    console.error('Error saving timestamp:', error);
+  } catch (_error) {
     showNotification('Failed to save timestamp ❌');
   }
 }
@@ -127,9 +115,7 @@ function showNotification(message) {
         notification.remove();
       }
     }, 3000);
-  } catch (error) {
-    console.error('Error showing notification:', error);
-  }
+  } catch (_error) {}
 }
 
 // Create bookmark button
@@ -162,10 +148,7 @@ function addBookmarkButton() {
 
     const button = createButton();
     rightControls.insertBefore(button, rightControls.firstChild);
-    console.log('Bookmark button added');
-  } catch (error) {
-    console.error('Error adding bookmark button:', error);
-  }
+  } catch (_error) {}
 }
 
 // Handle keyboard shortcut
@@ -193,23 +176,17 @@ function handleKeyPress(event) {
       event.stopPropagation();
       saveTimestamp();
     }
-  } catch (error) {
-    console.error('Error handling keyboard shortcut:', error);
-  }
+  } catch (_error) {}
 }
 
 // Initialize extension
 function initialize() {
   try {
-    console.log('Initializing extension...');
-
     // Load initial shortcut setting
     loadShortcutSetting();
 
     const videoId = new URLSearchParams(window.location.search).get('v');
     if (!videoId || videoId === currentVideoId) return;
-
-    console.log('New video detected:', videoId);
     currentVideoId = videoId;
 
     const existingButton = document.querySelector('.ytb-bookmark-btn');
@@ -218,9 +195,7 @@ function initialize() {
     }
 
     addBookmarkButton();
-  } catch (error) {
-    console.error('Error initializing extension:', error);
-  }
+  } catch (_error) {}
 }
 
 // Set up observers and event listeners
@@ -234,9 +209,7 @@ try {
           addBookmarkButton();
         }
       }
-    } catch (error) {
-      console.error('Error in mutation observer:', error);
-    }
+    } catch (_error) {}
   });
 
   observer.observe(document.body, {
@@ -248,10 +221,5 @@ try {
   document.addEventListener('keydown', handleKeyPress, true);
   window.addEventListener('yt-navigate-finish', initialize);
   window.addEventListener('load', initialize);
-
-  // Initial setup
-  console.log('Running initial setup...');
   initialize();
-} catch (error) {
-  console.error('Error setting up extension:', error);
-}
+} catch (_error) {}

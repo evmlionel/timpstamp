@@ -8,7 +8,7 @@ You are an experienced software developer tasked with addressing a GitHub issue.
 
 Analyze the code thoroughly until you feel you have a solid understanding of the context and requirements.
 
-3. Create a new branch from the main branch for this feature. The branch name should be descriptive and relate to the issue. Use the following format: feature/[issue-number]-brief-description
+3. Create a new branch from the main branch for this feature. The branch name should be descriptive and relate to the issue. Use the following format: [REPLACE: feature/[issue-number]-brief-description]
 
 4. Create a comprehensive plan and todo list for addressing the issue. Consider the following aspects:
    - Required code changes
