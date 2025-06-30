@@ -2,7 +2,6 @@ import { debounce, formatTime, showNotification } from './src/utils.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const bookmarksList = document.getElementById('bookmarksList');
-  const deleteAllBtn = document.getElementById('deleteAllBtn');
   const searchInput = document.getElementById('searchInput');
   const shortcutToggle = document.getElementById('shortcutToggle');
   const sortSelect = document.getElementById('sortSelect');
@@ -12,42 +11,6 @@ document.addEventListener('DOMContentLoaded', () => {
   let allBookmarks = []; // Store all bookmarks for filtering/sorting
   let currentSort = 'newest'; // Default sort
 
-  // Event listener for Clear All button (existing)
-  deleteAllBtn.addEventListener('click', async () => {
-    if (
-      window.confirm(
-        'Are you sure you want to delete all timestamps? This action cannot be undone.'
-      )
-    ) {
-      chrome.runtime.sendMessage(
-        { type: 'CLEAR_ALL_BOOKMARKS' },
-        (response) => {
-          if (chrome.runtime.lastError) {
-            showNotification(
-              'Error clearing bookmarks. Please try again.',
-              'error',
-              notificationArea
-            );
-            return;
-          }
-          if (response?.success) {
-            allBookmarks = []; // Clear local cache
-            renderBookmarks(); // Refresh the UI to show empty state
-            showNotification(
-              'All timestamps cleared successfully!',
-              'success',
-              notificationArea
-            );
-          } else {
-            const errorMessage = response?.error
-              ? response.error
-              : 'Failed to clear bookmarks.';
-            showNotification(errorMessage, 'error', notificationArea);
-          }
-        }
-      );
-    }
-  });
 
   async function loadAllData() {
     try {
@@ -125,8 +88,6 @@ document.addEventListener('DOMContentLoaded', () => {
       bookmarksList.appendChild(bookmarkElement);
     });
 
-    // Update delete all button state
-    deleteAllBtn.disabled = allBookmarks.length === 0;
   }
 
   function sortAndRenderBookmarks() {

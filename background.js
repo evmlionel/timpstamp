@@ -41,9 +41,6 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   if (request.type === 'ADD_BOOKMARK') {
     handleAddBookmark(request.data, sendResponse);
     return true; // Will respond asynchronously
-  } else if (request.type === 'CLEAR_ALL_BOOKMARKS') {
-    handleClearAllBookmarks(sendResponse);
-    return true; // Will respond asynchronously
   } else if (request.type === 'DELETE_BOOKMARK') {
     // Handle individual bookmark deletion
     handleDeleteBookmark(request.bookmarkId, sendResponse);
@@ -145,16 +142,6 @@ async function handleAddBookmark(bookmarkData, sendResponse) {
   }
 }
 
-// Handle clearing all bookmarks - simplified approach
-async function handleClearAllBookmarks(sendResponse) {
-  try {
-    // Just save an empty array - much simpler with our direct storage approach
-    await chrome.storage.sync.set({ [BOOKMARKS_KEY]: [] });
-    sendResponse({ success: true });
-  } catch (error) {
-    sendResponse({ success: false, error: error.message });
-  }
-}
 
 // Handle individual bookmark deletion - completely rewritten with direct storage
 async function handleDeleteBookmark(bookmarkId, sendResponse) {
