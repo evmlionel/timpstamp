@@ -16,12 +16,41 @@
             <option value="oldest">Sort: Oldest</option>
             <option value="title">Sort: Title (A-Z)</option>
           </select>
+          <button id="selectModeBtn" class="select-mode-btn" title="Select multiple bookmarks">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M17,3H7C5.89,3 5,3.89 5,5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V5C19,3.89 18.1,3 17,3M17,19H7V5H17V19M12,6L10.5,9L9.5,8L8,10.5L12,14.5L16,10.5L14.5,8L13.5,9L12,6Z" />
+            </svg>
+          </button>
+          <button id="exportBtn" class="export-btn" title="Export bookmarks">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+            </svg>
+          </button>
+          <button id="importBtn" class="import-btn" title="Import bookmarks">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+              <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z M12,12L16,16H13.5V19H10.5V16H8L12,12Z" />
+            </svg>
+          </button>
+          <input type="file" id="importFile" accept=".json" style="display: none;" />
+        </div>
+        <div id="bulkActions" class="bulk-actions" style="display: none;">
+          <span id="selectedCount" class="selected-count">0 selected</span>
+          <div class="bulk-buttons">
+            <button id="selectAllBtn" class="bulk-btn">Select All</button>
+            <button id="deselectAllBtn" class="bulk-btn">Deselect All</button>
+            <button id="exportSelectedBtn" class="bulk-btn">Export Selected</button>
+            <button id="deleteSelectedBtn" class="bulk-btn delete">Delete Selected</button>
+          </div>
         </div>
       </div>
       <div class="settings">
         <label class="toggle-label">
           <input type="checkbox" id="shortcutToggle" />
           Enable keyboard shortcut <kbd>B</kbd>
+        </label>
+        <label class="toggle-label">
+          <input type="checkbox" id="darkModeToggle" />
+          Dark mode
         </label>
       </div>
     </div>
@@ -42,17 +71,17 @@
 
     <div class="bookmarks-container">
       <div id="bookmarksList">
-        <div
-          id="loadingState"
-          style="text-align: center; padding: 20px; display: none"
-        >
-          Loading timestamps...
+        <div id="loadingState" class="loading-state" style="display: none">
+          <div class="loading-spinner"></div>
+          <div>Loading timestamps...</div>
         </div>
-        <div
-          id="emptyState"
-          style="text-align: center; padding: 20px; display: none"
-        >
-          No timestamps found.
+        <div id="emptyState" class="empty-state" style="display: none">
+          <svg class="empty-icon" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2M12,4C16.41,4 20,7.59 20,12C20,16.41 16.41,20 12,20C7.59,20 4,16.41 4,12C7.59,4 12,4Z" />
+          </svg>
+          <h3>No timestamps saved yet</h3>
+          <p>Start watching YouTube videos and press <kbd>B</kbd> to save timestamps!</p>
+          <small>Your bookmarks will appear here once you save some.</small>
         </div>
         <!-- Bookmarks will be dynamically added here by popup.js -->
       </div>

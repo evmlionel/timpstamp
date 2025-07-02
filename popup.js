@@ -4,18 +4,38 @@ document.addEventListener('DOMContentLoaded', () => {
   const bookmarksList = document.getElementById('bookmarksList');
   const searchInput = document.getElementById('searchInput');
   const shortcutToggle = document.getElementById('shortcutToggle');
+  const darkModeToggle = document.getElementById('darkModeToggle');
   const sortSelect = document.getElementById('sortSelect');
+  const exportBtn = document.getElementById('exportBtn');
+  const importBtn = document.getElementById('importBtn');
+  const importFile = document.getElementById('importFile');
+  const selectModeBtn = document.getElementById('selectModeBtn');
+  const bulkActions = document.getElementById('bulkActions');
+  const selectedCount = document.getElementById('selectedCount');
+  const selectAllBtn = document.getElementById('selectAllBtn');
+  const deselectAllBtn = document.getElementById('deselectAllBtn');
+  const exportSelectedBtn = document.getElementById('exportSelectedBtn');
+  const deleteSelectedBtn = document.getElementById('deleteSelectedBtn');
   const loadingState = document.getElementById('loadingState');
   const emptyState = document.getElementById('emptyState');
   const notificationArea = document.getElementById('notificationArea');
   let allBookmarks = []; // Store all bookmarks for filtering/sorting
   let currentSort = 'newest'; // Default sort
+  let isSelectMode = false;
+  const selectedBookmarks = new Set();
 
   async function loadAllData() {
     try {
-      // Get shortcut setting
-      const settingResult = await chrome.storage.sync.get(['shortcutEnabled']);
+      // Get settings
+      const settingResult = await chrome.storage.sync.get([
+        'shortcutEnabled',
+        'darkModeEnabled',
+      ]);
       shortcutToggle.checked = settingResult.shortcutEnabled !== false;
+      darkModeToggle.checked = settingResult.darkModeEnabled || false;
+
+      // Apply dark mode if enabled
+      applyTheme(darkModeToggle.checked);
 
       // Get bookmarks using the new direct storage approach
       const result = await chrome.storage.sync.get('timpstamp_bookmarks');
@@ -34,11 +54,262 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  function applyTheme(isDark) {
+    if (isDark) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    } else {
+      document.documentElement.removeAttribute('data-theme');
+    }
+  }
+
   loadAllData();
 
   shortcutToggle.addEventListener('change', (e) => {
     chrome.storage.sync.set({ shortcutEnabled: e.target.checked });
   });
+
+  darkModeToggle.addEventListener('change', (e) => {
+    const isDark = e.target.checked;
+    chrome.storage.sync.set({ darkModeEnabled: isDark });
+    applyTheme(isDark);
+  });
+
+  // Export/Import functionality
+  exportBtn.addEventListener('click', () => {
+    exportBookmarks();
+  });
+
+  importBtn.addEventListener('click', () => {
+    importFile.click();
+  });
+
+  importFile.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      importBookmarks(file);
+      e.target.value = ''; // Reset file input
+    }
+  });
+
+  async function exportBookmarks() {
+    try {
+      const result = await chrome.storage.sync.get('timpstamp_bookmarks');
+      const bookmarks = result.timpstamp_bookmarks || [];
+
+      if (bookmarks.length === 0) {
+        showNotification('No bookmarks to export', 'error', notificationArea);
+        return;
+      }
+
+      const exportData = {
+        version: '1.0',
+        exportDate: new Date().toISOString(),
+        bookmarks: bookmarks,
+      };
+
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `youtube-timestamps-${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      showNotification(
+        `Exported ${bookmarks.length} bookmarks`,
+        'success',
+        notificationArea
+      );
+    } catch (_error) {
+      showNotification('Failed to export bookmarks', 'error', notificationArea);
+    }
+  }
+
+  async function importBookmarks(file) {
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+
+      // Validate import data
+      if (!data.bookmarks || !Array.isArray(data.bookmarks)) {
+        throw new Error('Invalid file format');
+      }
+
+      // Get existing bookmarks
+      const result = await chrome.storage.sync.get('timpstamp_bookmarks');
+      const existingBookmarks = result.timpstamp_bookmarks || [];
+
+      // Merge bookmarks, avoiding duplicates by video ID
+      const existingIds = new Set(existingBookmarks.map((b) => b.id));
+      const newBookmarks = data.bookmarks.filter((b) => !existingIds.has(b.id));
+
+      if (newBookmarks.length === 0) {
+        showNotification(
+          'No new bookmarks to import',
+          'error',
+          notificationArea
+        );
+        return;
+      }
+
+      const mergedBookmarks = [...existingBookmarks, ...newBookmarks];
+      await chrome.storage.sync.set({ timpstamp_bookmarks: mergedBookmarks });
+
+      // Refresh UI
+      loadAllData();
+      showNotification(
+        `Imported ${newBookmarks.length} new bookmarks`,
+        'success',
+        notificationArea
+      );
+    } catch (_error) {
+      showNotification(
+        'Failed to import bookmarks. Please check file format.',
+        'error',
+        notificationArea
+      );
+    }
+  }
+
+  // Bulk operations
+  selectModeBtn.addEventListener('click', () => {
+    toggleSelectMode();
+  });
+
+  selectAllBtn.addEventListener('click', () => {
+    selectAllBookmarks();
+  });
+
+  deselectAllBtn.addEventListener('click', () => {
+    deselectAllBookmarks();
+  });
+
+  exportSelectedBtn.addEventListener('click', () => {
+    exportSelectedBookmarks();
+  });
+
+  deleteSelectedBtn.addEventListener('click', () => {
+    deleteSelectedBookmarks();
+  });
+
+  function toggleSelectMode() {
+    isSelectMode = !isSelectMode;
+    selectModeBtn.classList.toggle('active', isSelectMode);
+    document.body.classList.toggle('select-mode', isSelectMode);
+    bulkActions.style.display = isSelectMode ? 'flex' : 'none';
+
+    if (!isSelectMode) {
+      selectedBookmarks.clear();
+      updateSelectedCount();
+    }
+  }
+
+  function selectAllBookmarks() {
+    const visibleCards = document.querySelectorAll(
+      '.bookmark-card:not([style*="display: none"])'
+    );
+    visibleCards.forEach((card) => {
+      const bookmarkId = card.dataset.bookmarkId;
+      if (bookmarkId) {
+        selectedBookmarks.add(bookmarkId);
+        const checkbox = card.querySelector('.bookmark-checkbox');
+        if (checkbox) checkbox.checked = true;
+        card.classList.add('selected-for-bulk');
+      }
+    });
+    updateSelectedCount();
+  }
+
+  function deselectAllBookmarks() {
+    selectedBookmarks.clear();
+    document.querySelectorAll('.bookmark-card').forEach((card) => {
+      const checkbox = card.querySelector('.bookmark-checkbox');
+      if (checkbox) checkbox.checked = false;
+      card.classList.remove('selected-for-bulk');
+    });
+    updateSelectedCount();
+  }
+
+  function updateSelectedCount() {
+    selectedCount.textContent = `${selectedBookmarks.size} selected`;
+  }
+
+  function exportSelectedBookmarks() {
+    if (selectedBookmarks.size === 0) {
+      showNotification('No bookmarks selected', 'error', notificationArea);
+      return;
+    }
+
+    const bookmarksToExport = allBookmarks.filter((b) =>
+      selectedBookmarks.has(b.id)
+    );
+    const exportData = {
+      version: '1.0',
+      exportDate: new Date().toISOString(),
+      bookmarks: bookmarksToExport,
+    };
+
+    const dataStr = JSON.stringify(exportData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `youtube-timestamps-selected-${new Date().toISOString().split('T')[0]}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    showNotification(
+      `Exported ${bookmarksToExport.length} selected bookmarks`,
+      'success',
+      notificationArea
+    );
+  }
+
+  async function deleteSelectedBookmarks() {
+    if (selectedBookmarks.size === 0) {
+      showNotification('No bookmarks selected', 'error', notificationArea);
+      return;
+    }
+
+    if (
+      !confirm(
+        `Delete ${selectedBookmarks.size} selected bookmarks? This cannot be undone.`
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const result = await chrome.storage.sync.get('timpstamp_bookmarks');
+      const bookmarks = result.timpstamp_bookmarks || [];
+      const updatedBookmarks = bookmarks.filter(
+        (b) => !selectedBookmarks.has(b.id)
+      );
+
+      await chrome.storage.sync.set({ timpstamp_bookmarks: updatedBookmarks });
+
+      selectedBookmarks.clear();
+      loadAllData();
+      showNotification(
+        'Selected bookmarks deleted',
+        'success',
+        notificationArea
+      );
+    } catch (_error) {
+      showNotification(
+        'Failed to delete selected bookmarks',
+        'error',
+        notificationArea
+      );
+    }
+  }
 
   // --- Sorting Logic (for flat list) ---
   function sortBookmarks(bookmarks, sortBy) {
@@ -88,10 +359,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  function sortAndRenderBookmarks() {
+  let sortAndRenderBookmarks = () => {
     allBookmarks = sortBookmarks(allBookmarks, currentSort);
     renderBookmarks();
-  }
+  };
 
   // createBookmarkElement function remains largely the same but will be appended directly
   // Ensure createBookmarkElement is defined before this point if it's not hoisted, or move its definition up
@@ -106,6 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
     div.dataset.bookmarkId = bookmarkId; // Set the data attribute on the main card div
 
     div.innerHTML = `
+      <input type="checkbox" class="bookmark-checkbox" data-bookmark-id="${bookmarkId}">
       <div class="thumbnail-container">
         <img
           class="thumbnail"
@@ -190,6 +462,20 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
     updateNotePreview();
+
+    // Handle checkbox changes for bulk selection
+    const checkbox = div.querySelector('.bookmark-checkbox');
+    checkbox.addEventListener('change', (e) => {
+      const bookmarkId = e.target.dataset.bookmarkId;
+      if (e.target.checked) {
+        selectedBookmarks.add(bookmarkId);
+        div.classList.add('selected-for-bulk');
+      } else {
+        selectedBookmarks.delete(bookmarkId);
+        div.classList.remove('selected-for-bulk');
+      }
+      updateSelectedCount();
+    });
 
     editNoteBtn.addEventListener('click', () => {
       noteDisplay.style.display = 'none';
@@ -351,4 +637,93 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }, 500) // Adjust debounce time as needed
   );
+
+  // Keyboard Navigation
+  let selectedBookmarkIndex = -1;
+  const bookmarkCards = () => document.querySelectorAll('.bookmark-card');
+
+  function updateSelection() {
+    bookmarkCards().forEach((card, index) => {
+      card.classList.toggle('selected', index === selectedBookmarkIndex);
+    });
+  }
+
+  function selectBookmark(index) {
+    const cards = bookmarkCards();
+    if (index >= 0 && index < cards.length) {
+      selectedBookmarkIndex = index;
+      updateSelection();
+      // Scroll into view
+      cards[index].scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+
+  function openSelectedBookmark() {
+    const cards = bookmarkCards();
+    if (selectedBookmarkIndex >= 0 && selectedBookmarkIndex < cards.length) {
+      const link =
+        cards[selectedBookmarkIndex].querySelector('.video-title-link');
+      if (link) {
+        link.click();
+      }
+    }
+  }
+
+  function deleteSelectedBookmark() {
+    const cards = bookmarkCards();
+    if (selectedBookmarkIndex >= 0 && selectedBookmarkIndex < cards.length) {
+      const deleteBtn = cards[selectedBookmarkIndex].querySelector(
+        '.delete-bookmark-btn'
+      );
+      if (deleteBtn) {
+        deleteBtn.click();
+      }
+    }
+  }
+
+  // Global keyboard event listener
+  document.addEventListener('keydown', (e) => {
+    // Only handle if search input is not focused
+    if (document.activeElement === searchInput) return;
+
+    const cards = bookmarkCards();
+    if (cards.length === 0) return;
+
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        selectBookmark(selectedBookmarkIndex + 1);
+        break;
+      case 'ArrowUp':
+        e.preventDefault();
+        selectBookmark(selectedBookmarkIndex - 1);
+        break;
+      case 'Enter':
+        e.preventDefault();
+        openSelectedBookmark();
+        break;
+      case 'Delete':
+      case 'Backspace':
+        e.preventDefault();
+        deleteSelectedBookmark();
+        break;
+      case 'Escape':
+        e.preventDefault();
+        selectedBookmarkIndex = -1;
+        updateSelection();
+        break;
+      case '/':
+        e.preventDefault();
+        searchInput.focus();
+        break;
+    }
+  });
+
+  // Reset selection when bookmarks change
+  const originalSortAndRender = sortAndRenderBookmarks;
+  sortAndRenderBookmarks = function (...args) {
+    originalSortAndRender.apply(this, args);
+    selectedBookmarkIndex = -1;
+    updateSelection();
+  };
 }); // Closing brace and parenthesis for DOMContentLoaded
