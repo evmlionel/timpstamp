@@ -27,12 +27,17 @@ npm run check
 
 # Fix all issues automatically
 npm run check:fix
+
+# Testing
+npm test        # Run tests in watch mode
+npm run test:run # Run tests once
+npm run test:ui  # Run tests with UI
 ```
 
 ### Development
 - Use `bun` as the package manager (bun.lockb exists)
 - No build process required - this is a vanilla JavaScript Chrome extension
-- No test framework is currently configured
+- Testing framework: Vitest with jsdom for DOM testing and Chrome API mocks
 
 ## Architecture
 
@@ -82,3 +87,11 @@ npm run check:fix
 - Debounced search and auto-save functionality
 - Error handling for thumbnail loading failures
 - YouTube video ID extraction from URL parameters
+
+### Error Handling Strategy
+- **Storage Operations**: Functions throw specific errors with descriptive messages rather than logging
+- **Quota Management**: Storage operations check quota before saving and throw detailed quota exceeded errors
+- **User Feedback**: Errors are caught at the UI level and converted to user-friendly notifications
+- **No Console Logging**: Production code avoids console.* methods to maintain clean browser console
+- **Graceful Degradation**: UI components handle missing data and API failures without breaking
+- **Error Propagation**: Lower-level functions throw errors; higher-level functions handle them appropriately

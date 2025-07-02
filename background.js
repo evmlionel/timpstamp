@@ -59,23 +59,20 @@ async function getAllBookmarks() {
 
 // Save all bookmarks - new simplified approach
 async function saveAllBookmarks(bookmarks) {
-  try {
-    // Check storage quota before saving (Windows may have stricter limits)
-    const bytesInUse = await chrome.storage.sync.getBytesInUse();
-    const maxBytes = chrome.storage.sync.QUOTA_BYTES || 102400; // 100KB default
-    const bookmarksSize = JSON.stringify(bookmarks).length;
-    
-    if (bytesInUse + bookmarksSize > maxBytes * 0.9) {
-      throw new Error(`Storage quota exceeded. Current: ${bytesInUse}, Required: ${bookmarksSize}, Max: ${maxBytes}`);
-    }
-    
-    // Save bookmarks directly
-    await chrome.storage.sync.set({ [BOOKMARKS_KEY]: bookmarks });
-    return true;
-  } catch (error) {
-    console.error('Failed to save bookmarks:', error.message);
-    throw error; // Re-throw with specific error message
+  // Check storage quota before saving (Windows may have stricter limits)
+  const bytesInUse = await chrome.storage.sync.getBytesInUse();
+  const maxBytes = chrome.storage.sync.QUOTA_BYTES || 102400; // 100KB default
+  const bookmarksSize = JSON.stringify(bookmarks).length;
+
+  if (bytesInUse + bookmarksSize > maxBytes * 0.9) {
+    throw new Error(
+      `Storage quota exceeded. Current: ${bytesInUse}, Required: ${bookmarksSize}, Max: ${maxBytes}`
+    );
   }
+
+  // Save bookmarks directly
+  await chrome.storage.sync.set({ [BOOKMARKS_KEY]: bookmarks });
+  return true;
 }
 
 // Handle adding a bookmark
