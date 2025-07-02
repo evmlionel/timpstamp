@@ -60,11 +60,21 @@ async function getAllBookmarks() {
 // Save all bookmarks - new simplified approach
 async function saveAllBookmarks(bookmarks) {
   try {
+    // Check storage quota before saving (Windows may have stricter limits)
+    const bytesInUse = await chrome.storage.sync.getBytesInUse();
+    const maxBytes = chrome.storage.sync.QUOTA_BYTES || 102400; // 100KB default
+    const bookmarksSize = JSON.stringify(bookmarks).length;
+    
+    if (bytesInUse + bookmarksSize > maxBytes * 0.9) {
+      throw new Error(`Storage quota exceeded. Current: ${bytesInUse}, Required: ${bookmarksSize}, Max: ${maxBytes}`);
+    }
+    
     // Save bookmarks directly
     await chrome.storage.sync.set({ [BOOKMARKS_KEY]: bookmarks });
     return true;
-  } catch (_error) {
-    return false;
+  } catch (error) {
+    console.error('Failed to save bookmarks:', error.message);
+    throw error; // Re-throw with specific error message
   }
 }
 
@@ -115,9 +125,9 @@ async function handleAddBookmark(bookmarkData, sendResponse) {
       bookmarks.push(newBookmark);
     }
 
-    // Save updated bookmarks using chunking
-    const saveResult = await saveAllBookmarks(bookmarks);
-    if (saveResult) {
+    // Save updated bookmarks
+    try {
+      await saveAllBookmarks(bookmarks);
       // Send a more specific message
       sendResponse({
         success: true,
@@ -126,10 +136,10 @@ async function handleAddBookmark(bookmarkData, sendResponse) {
             ? 'Timestamp updated! 🎉'
             : 'Timestamp saved! 🎉',
       });
-    } else {
+    } catch (saveError) {
       sendResponse({
         success: false,
-        error: 'Failed to save bookmark changes',
+        error: `Failed to save bookmarks: ${saveError.message}`,
       });
     }
   } catch (error) {
