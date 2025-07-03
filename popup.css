@@ -166,10 +166,11 @@ h2 {
 
 .bookmark-details-row {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   align-items: center;
   width: 100%;
   margin-top: 2px;
+  gap: 12px;
 }
 
 .timestamp-actions {
@@ -1051,6 +1052,22 @@ h2 {
 
   .notes-container {
     align-items: flex-start;
+  }
+
+  .bookmark-details-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .timestamp-actions {
+    order: 2;
+    align-self: flex-end;
+  }
+
+  .saved-date {
+    order: 1;
+    align-self: flex-start;
   }
 
   .video-title {

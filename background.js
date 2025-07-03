@@ -43,6 +43,10 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
     // Handle individual bookmark deletion
     handleDeleteBookmark(request.bookmarkId, sendResponse);
     return true; // Will respond asynchronously
+  } else if (request.action === 'updateBookmarkNotes') {
+    // Handle notes update
+    handleUpdateBookmarkNotes(request.bookmarkId, request.notes, sendResponse);
+    return true; // Will respond asynchronously
   }
 });
 
@@ -178,6 +182,34 @@ async function handleDeleteBookmark(bookmarkId, sendResponse) {
           error: 'Failed to save updated bookmarks to storage',
         });
     }
+  } catch (error) {
+    if (sendResponse) sendResponse({ success: false, error: error.message });
+  }
+}
+
+// Handle updating bookmark notes
+async function handleUpdateBookmarkNotes(bookmarkId, notes, sendResponse) {
+  try {
+    // Get all current bookmarks
+    const result = await chrome.storage.sync.get(BOOKMARKS_KEY);
+    const allBookmarks = result[BOOKMARKS_KEY] || [];
+
+    // Find and update the bookmark
+    const bookmarkIndex = allBookmarks.findIndex((b) => b.id === bookmarkId);
+    
+    if (bookmarkIndex === -1) {
+      if (sendResponse) sendResponse({ success: false, error: 'Bookmark not found' });
+      return;
+    }
+
+    // Update the notes
+    allBookmarks[bookmarkIndex].notes = notes;
+    allBookmarks[bookmarkIndex].savedAt = Date.now(); // Update timestamp
+
+    // Save the updated bookmarks
+    await chrome.storage.sync.set({ [BOOKMARKS_KEY]: allBookmarks });
+
+    if (sendResponse) sendResponse({ success: true });
   } catch (error) {
     if (sendResponse) sendResponse({ success: false, error: error.message });
   }
