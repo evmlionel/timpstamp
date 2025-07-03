@@ -82,15 +82,18 @@ h2 {
 }
 
 .bookmark-card {
-  display: flex;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   gap: 12px;
+  align-items: center;
   padding: 12px;
   border-radius: 8px;
   background: white;
   border: 1px solid #e0e0e0;
   margin-bottom: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  position: relative;
+  min-height: 72px;
 }
 
 .bookmark-card:hover {
@@ -204,7 +207,9 @@ h2 {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  margin-left: 8px;
+  min-width: 100px;
+  max-width: 100px;
+  flex-shrink: 0;
 }
 
 .note-display {
