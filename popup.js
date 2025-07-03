@@ -389,10 +389,22 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="timestamp-badge">${formatTime(bookmark.timestamp)}</div>
         </div>
         <div class="content-section">
-          <div class="content-header">
-            <a href="${bookmark.url}" target="_blank" class="video-title-link" title="${bookmark.videoTitle}">
-              <h3 class="video-title">${bookmark.videoTitle}</h3>
-            </a>
+          <a href="${bookmark.url}" target="_blank" class="video-title-link" title="${bookmark.videoTitle}">
+            <h3 class="video-title">${bookmark.videoTitle}</h3>
+          </a>
+          <div class="content-meta">
+            <div class="notes-and-date">
+              <div class="notes-container">
+                <div class="note-display">
+                  <span class="note-preview"></span>
+                  <button class="edit-note-btn" title="Edit Note">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                  </button>
+                </div>
+                <textarea class="notes-textarea" data-bookmark-id="${bookmarkId}" placeholder="Add notes..." style="display: none;" rows="3">${notes}</textarea>
+              </div>
+              <div class="saved-date">Saved: ${new Date(bookmark.savedAt || bookmark.createdAt).toLocaleDateString()}</div>
+            </div>
             <div class="action-buttons">
               <button class="share-btn icon-btn" data-url="${bookmark.url}" title="Copy link to clipboard">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92zM18 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM6 13c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm12 7.02c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z" fill="currentColor"/></svg>
@@ -401,18 +413,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
               </button>
             </div>
-          </div>
-          <div class="content-footer">
-            <div class="notes-container">
-              <div class="note-display">
-                <span class="note-preview"></span>
-                <button class="edit-note-btn" title="Edit Note">
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-                </button>
-              </div>
-              <textarea class="notes-textarea" data-bookmark-id="${bookmarkId}" placeholder="Add notes..." style="display: none;" rows="3">${notes}</textarea>
-            </div>
-            <div class="saved-date">Saved: ${new Date(bookmark.savedAt || bookmark.createdAt).toLocaleDateString()}</div>
           </div>
         </div>
       </div>

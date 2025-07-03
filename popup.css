@@ -111,21 +111,22 @@ h2 {
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
-.content-header {
+.content-meta {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 12px;
+  align-items: center;
+  gap: 8px;
 }
 
-.content-footer {
+.notes-and-date {
   display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 12px;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
 }
 
 .action-buttons {
@@ -173,8 +174,6 @@ h2 {
 .video-title-link {
   text-decoration: none;
   color: #111827;
-  flex: 1;
-  min-width: 0;
 }
 
 .video-title {
@@ -246,7 +245,6 @@ h2 {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  width: 100%;
 }
 
 .note-display {
@@ -1100,7 +1098,7 @@ h2 {
     height: 180px;
   }
 
-  .content-header {
+  .content-meta {
     flex-direction: column;
     align-items: flex-start;
     gap: 8px;
@@ -1108,12 +1106,6 @@ h2 {
 
   .action-buttons {
     align-self: flex-end;
-  }
-
-  .content-footer {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 6px;
   }
 
   .video-title {
