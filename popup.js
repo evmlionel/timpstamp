@@ -367,67 +367,63 @@ document.addEventListener('DOMContentLoaded', () => {
   // createBookmarkElement function remains largely the same but will be appended directly
   // Ensure createBookmarkElement is defined before this point if it's not hoisted, or move its definition up
   function createBookmarkElement(bookmark, _index) {
-    const thumbnailUrl = `https://i.ytimg.com/vi/${bookmark.videoId}/hqdefault.jpg`;
+    const thumbnailUrl = `https://i.ytimg.com/vi/${bookmark.videoId}/mqdefault.jpg`;
     const div = document.createElement('div');
-    // Assign a class for general bookmark styling, maybe 'bookmark-card'
-    div.className = 'bookmark-card'; // New class for the card itself
+    div.className = 'bookmark-card';
     const bookmarkId = bookmark.id;
     const notes = bookmark.notes || '';
 
-    div.dataset.bookmarkId = bookmarkId; // Set the data attribute on the main card div
+    div.dataset.bookmarkId = bookmarkId;
 
     div.innerHTML = `
-      <input type="checkbox" class="bookmark-checkbox" data-bookmark-id="${bookmarkId}">
-      <div class="bookmark-card-content">
+    <input type="checkbox" class="bookmark-checkbox" data-bookmark-id="${bookmarkId}">
+    <a href="${bookmark.url}" target="_blank" class="bookmark-link">
+      <div class="bookmark-card-inner">
         <div class="thumbnail-container">
-          <img
-            class="thumbnail"
-            src="${thumbnailUrl}"
-            alt="Video thumbnail"
-          />
-          <div class="thumbnail-placeholder" style="display: none; background: #eee; height: 100%; width: 100%; text-align: center; line-height: 68px; color: #aaa; font-size: 12px;">No thumb</div>
+          <img class="thumbnail" src="${thumbnailUrl}" alt="Video thumbnail"/>
+          <div class="thumbnail-placeholder"></div>
           <div class="timestamp-badge">${formatTime(bookmark.timestamp)}</div>
         </div>
-        <div class="content-section">
-          <a href="${bookmark.url}" target="_blank" class="video-title-link" title="${bookmark.videoTitle}">
-            <h3 class="video-title">${bookmark.videoTitle}</h3>
-          </a>
-          <div class="content-meta">
-            <div class="notes-and-date">
-              <div class="notes-container">
-                <div class="note-display">
-                  <span class="note-preview"></span>
-                  <button class="edit-note-btn" title="Edit Note">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-                  </button>
-                </div>
-                <textarea class="notes-textarea" data-bookmark-id="${bookmarkId}" placeholder="Add notes..." style="display: none;" rows="3">${notes}</textarea>
-              </div>
-              <div class="saved-date">Saved: ${new Date(bookmark.savedAt || bookmark.createdAt).toLocaleDateString()}</div>
-            </div>
-            <div class="action-buttons">
-              <button class="share-btn icon-btn" data-url="${bookmark.url}" title="Copy link to clipboard">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92zM18 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM6 13c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm12 7.02c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z" fill="currentColor"/></svg>
-              </button>
-              <button class="delete-btn icon-btn" data-bookmark-id="${bookmarkId}" title="Delete timestamp">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-              </button>
-            </div>
+        <div class="bookmark-details">
+          <h3 class="video-title" title="${bookmark.videoTitle}">${bookmark.videoTitle}</h3>
+          <div class="note-preview-container">
+            <span class="note-preview"></span>
           </div>
         </div>
       </div>
-    `;
+    </a>
+    <div class="bookmark-meta">
+        <span class="saved-date">Saved: ${new Date(bookmark.savedAt || bookmark.createdAt).toLocaleDateString()}</span>
+        <div class="bookmark-actions">
+            <button class="edit-note-btn icon-btn" title="Add/Edit Note">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+            </button>
+            <button class="share-btn icon-btn" data-url="${bookmark.url}" title="Copy link to clipboard">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92zM18 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM6 13c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm12 7.02c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z" fill="currentColor"/></svg>
+            </button>
+            <button class="delete-btn icon-btn" data-bookmark-id="${bookmarkId}" title="Delete timestamp">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+            </button>
+        </div>
+    </div>
+    <div class="notes-editor" style="display: none;">
+      <textarea class="notes-textarea" data-bookmark-id="${bookmarkId}" placeholder="Add a note...">${notes}</textarea>
+    </div>
+  `;
 
     const thumbnailImg = div.querySelector('.thumbnail');
     const thumbnailPlaceholder = div.querySelector('.thumbnail-placeholder');
     thumbnailImg.onerror = () => {
-      // Simpler error assignment
       thumbnailImg.style.display = 'none';
       thumbnailPlaceholder.style.display = 'block';
     };
 
+    const stopPropagation = (e) => e.stopPropagation();
+
     const shareBtn = div.querySelector('.share-btn');
-    shareBtn.addEventListener('click', async (_e) => {
+    shareBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      e.preventDefault();
       try {
         await navigator.clipboard.writeText(shareBtn.dataset.url);
         showNotification('Link copied!', 'success', notificationArea);
@@ -437,43 +433,87 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const deleteBtn = div.querySelector('.delete-btn');
-    deleteBtn.addEventListener('click', (_e) => {
+    deleteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
       const idToDelete = deleteBtn.dataset.bookmarkId;
       initiateDeleteWithUndo(idToDelete);
     });
 
-    const noteDisplay = div.querySelector('.note-display');
-    const notePreview = div.querySelector('.note-preview');
     const editNoteBtn = div.querySelector('.edit-note-btn');
+    const notesEditor = div.querySelector('.notes-editor');
     const notesTextarea = div.querySelector('.notes-textarea');
+    const notePreview = div.querySelector('.note-preview');
+    const notePreviewContainer = div.querySelector('.note-preview-container');
 
     function updateNotePreview() {
       const currentNotes = notesTextarea.value.trim();
       if (currentNotes) {
-        // Show more text since we have more space now
-        const maxLength = 80;
-        let previewText = currentNotes;
-        
-        // If text is longer than max, truncate and add ellipsis
-        if (currentNotes.length > maxLength) {
-          previewText = currentNotes.substring(0, maxLength) + '...';
-        }
-        
-        notePreview.textContent = previewText;
-        notePreview.style.display = '-webkit-box';
-        editNoteBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>`;
+        notePreview.textContent = currentNotes;
+        notePreviewContainer.style.display = 'block';
         editNoteBtn.title = 'Edit Note';
       } else {
         notePreview.textContent = '';
-        notePreview.style.display = 'none';
-        editNoteBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>`;
+        notePreviewContainer.style.display = 'none';
         editNoteBtn.title = 'Add Note';
       }
     }
     updateNotePreview();
 
-    // Handle checkbox changes for bulk selection
+    editNoteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const isEditing = notesEditor.style.display === 'block';
+      notesEditor.style.display = isEditing ? 'none' : 'block';
+      if (!isEditing) {
+        notesTextarea.focus();
+      }
+    });
+
+    const saveNotes = debounce(async () => {
+      const updatedNotes = notesTextarea.value.trim();
+      try {
+        const result = await chrome.storage.sync.get('timpstamp_bookmarks');
+        const bookmarks = result.timpstamp_bookmarks || [];
+        const bookmarkIndex = bookmarks.findIndex((b) => b.id === bookmarkId);
+        if (bookmarkIndex !== -1) {
+          if (bookmarks[bookmarkIndex].notes !== updatedNotes) {
+            bookmarks[bookmarkIndex].notes = updatedNotes;
+            await chrome.storage.sync.set({ timpstamp_bookmarks: bookmarks });
+            showNotification('Note saved', 'success', notificationArea);
+          }
+        }
+        updateNotePreview();
+      } catch (error) {
+        console.error('Failed to save notes:', error);
+        showNotification('Failed to save note', 'error', notificationArea);
+      }
+    }, 500);
+
+    notesTextarea.addEventListener('input', saveNotes);
+
+    notesTextarea.addEventListener('blur', () => {
+      setTimeout(() => {
+        if (document.activeElement !== editNoteBtn) {
+          notesEditor.style.display = 'none';
+          if (saveNotes.flush) saveNotes.flush();
+        }
+      }, 150);
+    });
+
+    notesTextarea.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        notesTextarea.blur();
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        notesTextarea.blur();
+      }
+    });
+
     const checkbox = div.querySelector('.bookmark-checkbox');
+    checkbox.addEventListener('click', stopPropagation);
     checkbox.addEventListener('change', (e) => {
       const bookmarkId = e.target.dataset.bookmarkId;
       if (e.target.checked) {
@@ -486,49 +526,6 @@ document.addEventListener('DOMContentLoaded', () => {
       updateSelectedCount();
     });
 
-    editNoteBtn.addEventListener('click', () => {
-      noteDisplay.style.display = 'none';
-      notesTextarea.style.display = 'block';
-      notesTextarea.style.width = '100%';
-      notesTextarea.focus();
-    });
-
-    // Auto-save notes on input with debounce
-    const saveNotes = debounce(async () => {
-      const updatedNotes = notesTextarea.value.trim();
-      try {
-        await chrome.runtime.sendMessage({
-          action: 'updateBookmarkNotes',
-          bookmarkId: bookmarkId,
-          notes: updatedNotes
-        });
-        updateNotePreview();
-      } catch (error) {
-        console.error('Failed to save notes:', error);
-      }
-    }, 500);
-
-    notesTextarea.addEventListener('input', saveNotes);
-
-    notesTextarea.addEventListener('blur', () => {
-      setTimeout(() => {
-        updateNotePreview();
-        notesTextarea.style.display = 'none';
-        noteDisplay.style.display = 'flex';
-      }, 150);
-    });
-
-    // Handle Enter key to save and exit
-    notesTextarea.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        notesTextarea.blur();
-      }
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        notesTextarea.blur();
-      }
-    });
     return div;
   }
 
