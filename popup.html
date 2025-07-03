@@ -18,40 +18,40 @@
           </select>
           <button id="selectModeBtn" class="select-mode-btn" title="Select multiple bookmarks">
             <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M17,3H7C5.89,3 5,3.89 5,5V19A2,2 0 0,0 7,21H17A2,2 0 0,0 19,19V5C19,3.89 18.1,3 17,3M17,19H7V5H17V19M12,6L10.5,9L9.5,8L8,10.5L12,14.5L16,10.5L14.5,8L13.5,9L12,6Z" />
+              <path d="M7,5H17A2,2 0 0,1 19,7V17A2,2 0 0,1 17,19H7A2,2 0 0,1 5,17V7A2,2 0 0,1 7,5M7,3A4,4 0 0,0 3,7V17A4,4 0 0,0 7,21H17A4,4 0 0,0 21,17V7A4,4 0 0,0 17,3H7Z" />
             </svg>
           </button>
           <button id="exportBtn" class="export-btn" title="Export bookmarks">
             <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z" />
+              <path d="M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z" />
             </svg>
           </button>
           <button id="importBtn" class="import-btn" title="Import bookmarks">
             <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M14,2H6A2,2 0 0,0 4,4V20A2,2 0 0,0 6,22H18A2,2 0 0,0 20,20V8L14,2M18,20H6V4H13V9H18V20Z M12,12L16,16H13.5V19H10.5V16H8L12,12Z" />
+              <path d="M9,16V10H5L12,3L19,10H15V16H9M5,20V18H19V20H5Z" />
             </svg>
           </button>
           <input type="file" id="importFile" accept=".json" style="display: none;" />
         </div>
-        <div id="bulkActions" class="bulk-actions" style="display: none;">
-          <span id="selectedCount" class="selected-count">0 selected</span>
-          <div class="bulk-buttons">
-            <button id="selectAllBtn" class="bulk-btn">Select All</button>
-            <button id="deselectAllBtn" class="bulk-btn">Deselect All</button>
-            <button id="exportSelectedBtn" class="bulk-btn">Export Selected</button>
-            <button id="deleteSelectedBtn" class="bulk-btn delete">Delete Selected</button>
-          </div>
+      </div>
+       <div class="settings">
+        <div class="toggle-control">
+          <input type="checkbox" id="shortcutToggle" />
+          <label for="shortcutToggle">Enable shortcut <kbd>B</kbd></label>
+        </div>
+        <div class="toggle-control">
+          <input type="checkbox" id="darkModeToggle" />
+          <label for="darkModeToggle">Dark mode</label>
         </div>
       </div>
-      <div class="settings">
-        <label class="toggle-label">
-          <input type="checkbox" id="shortcutToggle" />
-          Enable keyboard shortcut <kbd>B</kbd>
-        </label>
-        <label class="toggle-label">
-          <input type="checkbox" id="darkModeToggle" />
-          Dark mode
-        </label>
+      <div id="bulkActions" class="bulk-actions" style="display: none;">
+        <span id="selectedCount" class="selected-count">0 selected</span>
+        <div class="bulk-buttons">
+          <button id="selectAllBtn" class="bulk-btn">Select All</button>
+          <button id="deselectAllBtn" class="bulk-btn">Deselect All</button>
+          <button id="exportSelectedBtn" class="bulk-btn">Export Selected</button>
+          <button id="deleteSelectedBtn" class="bulk-btn delete">Delete Selected</button>
+        </div>
       </div>
     </div>
 
