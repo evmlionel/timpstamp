@@ -82,10 +82,9 @@ h2 {
 }
 
 .bookmark-card {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 12px;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
   padding: 12px;
   border-radius: 8px;
   background: white;
@@ -93,7 +92,6 @@ h2 {
   margin-bottom: 12px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   position: relative;
-  min-height: 72px;
 }
 
 .bookmark-card:hover {
@@ -101,10 +99,17 @@ h2 {
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
 }
 
+.bookmark-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
 .thumbnail-container {
-  width: 100px;
-  height: 56px;
-  border-radius: 4px;
+  width: 120px;
+  height: 68px;
+  border-radius: 6px;
   overflow: hidden;
   flex-shrink: 0;
   background-color: #f0f0f0;
@@ -130,11 +135,10 @@ h2 {
 }
 
 .bookmark-info {
-  flex: 1;
-  min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
+  width: 100%;
 }
 
 .video-title-link {
@@ -143,9 +147,9 @@ h2 {
 }
 
 .video-title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
-  line-height: 1.35;
+  line-height: 1.4;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -153,7 +157,7 @@ h2 {
   overflow: hidden;
   text-overflow: ellipsis;
   color: #111827;
-  margin: 4px 0;
+  margin: 0;
 }
 
 .video-title-link:hover .video-title {
@@ -165,8 +169,7 @@ h2 {
   justify-content: space-between;
   align-items: center;
   width: 100%;
-  margin-top: auto;
-  padding-top: 4px;
+  margin-top: 2px;
 }
 
 .timestamp-actions {
@@ -198,17 +201,16 @@ h2 {
 }
 
 .saved-date {
-  font-size: 11px;
+  font-size: 12px;
   color: #6b7280;
   white-space: nowrap;
+  font-weight: 500;
 }
 
 .notes-container {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  min-width: 100px;
-  max-width: 100px;
   flex-shrink: 0;
 }
 
@@ -1037,19 +1039,18 @@ h2 {
     justify-content: space-between;
   }
 
-  .bookmark-card {
+  .bookmark-card-top {
     flex-direction: column;
-    align-items: stretch;
+    gap: 8px;
   }
 
   .thumbnail-container {
     width: 100%;
-    height: 200px;
-    margin-bottom: 8px;
+    height: 180px;
   }
 
-  .bookmark-info {
-    width: 100%;
+  .notes-container {
+    align-items: flex-start;
   }
 
   .video-title {
@@ -1073,9 +1074,13 @@ h2 {
     margin-bottom: 8px;
   }
 
+  .bookmark-card-top {
+    gap: 6px;
+  }
+
   .thumbnail-container {
-    width: 80px;
-    height: 45px;
+    width: 100px;
+    height: 56px;
   }
 
   .video-title {

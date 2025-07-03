@@ -378,20 +378,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     div.innerHTML = `
       <input type="checkbox" class="bookmark-checkbox" data-bookmark-id="${bookmarkId}">
-      <div class="thumbnail-container">
-        <img
-          class="thumbnail"
-          src="${thumbnailUrl}"
-          alt="Video thumbnail"
-        />
-        <div class="thumbnail-placeholder" style="display: none; background: #eee; height: 100%; width: 100%; text-align: center; line-height: 68px; color: #aaa; font-size: 12px;">No thumb</div>
-        <div class="timestamp-badge">${formatTime(bookmark.timestamp)}</div>
+      <div class="bookmark-card-top">
+        <div class="thumbnail-container">
+          <img
+            class="thumbnail"
+            src="${thumbnailUrl}"
+            alt="Video thumbnail"
+          />
+          <div class="thumbnail-placeholder" style="display: none; background: #eee; height: 100%; width: 100%; text-align: center; line-height: 68px; color: #aaa; font-size: 12px;">No thumb</div>
+          <div class="timestamp-badge">${formatTime(bookmark.timestamp)}</div>
+        </div>
+        <div class="notes-container">
+          <div class="note-display">
+            <span class="note-preview"></span>
+            <button class="edit-note-btn" title="Edit Note">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+            </button>
+          </div>
+          <textarea class="notes-textarea" data-bookmark-id="${bookmarkId}" placeholder="Add notes..." style="display: none;" rows="3">${notes}</textarea>
+        </div>
       </div>
       <div class="bookmark-info">
         <a href="${bookmark.url}" target="_blank" class="video-title-link" title="${bookmark.videoTitle}">
           <h3 class="video-title">${bookmark.videoTitle}</h3>
         </a>
-        <!-- Start of new wrapper -->
         <div class="bookmark-details-row">
           <div class="timestamp-actions">
             <button class="share-btn icon-btn" data-url="${bookmark.url}" title="Copy link to clipboard">
@@ -403,16 +413,6 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <div class="saved-date">Saved: ${new Date(bookmark.savedAt || bookmark.createdAt).toLocaleDateString()}</div>
         </div>
-        <!-- End of new wrapper -->
-      </div>
-      <div class="notes-container">
-        <div class="note-display">
-          <span class="note-preview"></span>
-          <button class="edit-note-btn" title="Edit Note">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-          </button>
-        </div>
-        <textarea class="notes-textarea" data-bookmark-id="${bookmarkId}" placeholder="Add notes..." style="display: none;" rows="3">${notes}</textarea>
       </div>
     `;
 
