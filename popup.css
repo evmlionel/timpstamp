@@ -163,7 +163,21 @@ h2 {
   word-wrap: break-word;
 }
 
+.bookmark-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-primary);
+}
 
+.saved-date {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  line-height: 1;
+}
 
 .icon-btn {
   background: none;
@@ -189,6 +203,7 @@ h2 {
 .icon-btn svg {
   width: 16px;
   height: 16px;
+  vertical-align: middle;
 }
 
 .hidden {
