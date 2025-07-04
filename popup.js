@@ -385,10 +385,8 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="timestamp-badge">${formatTime(bookmark.timestamp)}</div>
         </div>
         <div class="bookmark-details">
-          <h3 class="video-title" title="${bookmark.videoTitle}">${bookmark.videoTitle}</h3>
-          <div class="note-preview-container">
-            <span class="note-preview"></span>
-          </div>
+          <div class="video-title" title="${bookmark.videoTitle}">${bookmark.videoTitle}</div>
+          
         </div>
       </div>
     </a>
@@ -443,22 +441,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const editNoteBtn = div.querySelector('.edit-note-btn');
     const notesEditor = div.querySelector('.notes-editor');
     const notesTextarea = div.querySelector('.notes-textarea');
-    const notePreview = div.querySelector('.note-preview');
-    const notePreviewContainer = div.querySelector('.note-preview-container');
-
-    function updateNotePreview() {
-      const currentNotes = notesTextarea.value.trim();
-      if (currentNotes) {
-        notePreview.textContent = currentNotes;
-        notePreviewContainer.style.display = 'block';
-        editNoteBtn.title = 'Edit Note';
-      } else {
-        notePreview.textContent = '';
-        notePreviewContainer.style.display = 'none';
-        editNoteBtn.title = 'Add Note';
-      }
-    }
-    updateNotePreview();
+    
 
     editNoteBtn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -483,7 +466,6 @@ document.addEventListener('DOMContentLoaded', () => {
             showNotification('Note saved', 'success', notificationArea);
           }
         }
-        updateNotePreview();
       } catch (error) {
         console.error('Failed to save notes:', error);
         showNotification('Failed to save note', 'error', notificationArea);
