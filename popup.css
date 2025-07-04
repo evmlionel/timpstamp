@@ -167,7 +167,7 @@ h2 {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 4px 12px;
+  padding: 4px 12px; /* Reduced vertical padding */
   background: var(--bg-secondary);
   border-top: 1px solid var(--border-primary);
 }
@@ -176,7 +176,7 @@ h2 {
   font-size: 11px;
   color: var(--text-secondary);
   font-weight: 500;
-  line-height: 1;
+  line-height: 1; /* Ensure consistent vertical alignment */
 }
 
 .icon-btn {
@@ -203,7 +203,7 @@ h2 {
 .icon-btn svg {
   width: 16px;
   height: 16px;
-  vertical-align: middle;
+  vertical-align: middle; /* Align SVG icons vertically */
 }
 
 .hidden {
