@@ -20,9 +20,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const emptyState = document.getElementById('emptyState');
   const notificationArea = document.getElementById('notificationArea');
   let allBookmarks = []; // Store all bookmarks for filtering/sorting
+  let filteredBookmarks = []; // Store filtered/sorted bookmarks
   let currentSort = 'newest'; // Default sort
   let isSelectMode = false;
   const selectedBookmarks = new Set();
+
+  // Performance optimization variables
+  const ITEMS_PER_PAGE = 50; // Show 50 bookmarks at a time
+  let currentPage = 0;
+  let isLoading = false;
 
   async function loadAllData() {
     try {
@@ -328,16 +334,26 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --- Rendering Logic (for flat list) ---
+  // Performance-optimized rendering with pagination and lazy loading
   function renderBookmarks() {
-    bookmarksList.innerHTML = ''; // Clear existing list
+    if (isLoading) return;
+
     const searchTerm = searchInput.value.toLowerCase();
 
-    const filteredBookmarks = allBookmarks.filter(
+    // Filter bookmarks
+    filteredBookmarks = allBookmarks.filter(
       (bookmark) =>
         (bookmark.videoTitle || '').toLowerCase().includes(searchTerm) ||
         (bookmark.notes || '').toLowerCase().includes(searchTerm)
     );
 
+    // Reset pagination when filter changes
+    currentPage = 0;
+
+    // Clear existing list
+    bookmarksList.innerHTML = '';
+
+    // Handle empty states
     if (
       filteredBookmarks.length === 0 &&
       allBookmarks.length > 0 &&
@@ -345,18 +361,113 @@ document.addEventListener('DOMContentLoaded', () => {
     ) {
       emptyState.textContent = 'No bookmarks match your search.';
       emptyState.style.display = 'block';
+      return;
     } else if (filteredBookmarks.length === 0 && allBookmarks.length === 0) {
       emptyState.textContent =
         'No timestamps saved yet. Save some from YouTube!';
       emptyState.style.display = 'block';
+      return;
     } else {
       emptyState.style.display = 'none';
     }
 
-    filteredBookmarks.forEach((bookmark, index) => {
-      const bookmarkElement = createBookmarkElement(bookmark, index);
-      bookmarksList.appendChild(bookmarkElement);
+    // Render initial page
+    renderBookmarkPage();
+
+    // Set up infinite scroll for large collections
+    if (filteredBookmarks.length > ITEMS_PER_PAGE) {
+      setupInfiniteScroll();
+    }
+  }
+
+  // Render a single page of bookmarks
+  function renderBookmarkPage() {
+    const startIndex = currentPage * ITEMS_PER_PAGE;
+    const endIndex = Math.min(
+      startIndex + ITEMS_PER_PAGE,
+      filteredBookmarks.length
+    );
+    const pageBookmarks = filteredBookmarks.slice(startIndex, endIndex);
+
+    // Use DocumentFragment for better performance
+    const fragment = document.createDocumentFragment();
+
+    pageBookmarks.forEach((bookmark, index) => {
+      const bookmarkElement = createBookmarkElement(
+        bookmark,
+        startIndex + index
+      );
+      fragment.appendChild(bookmarkElement);
     });
+
+    bookmarksList.appendChild(fragment);
+
+    // Show load more button if there are more items
+    if (endIndex < filteredBookmarks.length) {
+      const loadMoreBtn = createLoadMoreButton();
+      bookmarksList.appendChild(loadMoreBtn);
+    }
+  }
+
+  // Create load more button for pagination
+  function createLoadMoreButton() {
+    const button = document.createElement('button');
+    button.className = 'load-more-btn';
+    button.textContent = `Load More (${filteredBookmarks.length - (currentPage + 1) * ITEMS_PER_PAGE} remaining)`;
+    button.setAttribute(
+      'aria-label',
+      `Load ${Math.min(ITEMS_PER_PAGE, filteredBookmarks.length - (currentPage + 1) * ITEMS_PER_PAGE)} more bookmarks`
+    );
+
+    button.addEventListener('click', () => {
+      loadMoreBookmarks();
+    });
+
+    return button;
+  }
+
+  // Load more bookmarks when requested
+  function loadMoreBookmarks() {
+    if (isLoading) return;
+
+    isLoading = true;
+    currentPage++;
+
+    // Remove the load more button
+    const loadMoreBtn = bookmarksList.querySelector('.load-more-btn');
+    if (loadMoreBtn) {
+      loadMoreBtn.remove();
+    }
+
+    // Render next page
+    renderBookmarkPage();
+
+    isLoading = false;
+  }
+
+  // Set up infinite scroll for better UX with large collections
+  function setupInfiniteScroll() {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (
+            entry.isIntersecting &&
+            entry.target.classList.contains('load-more-btn')
+          ) {
+            loadMoreBookmarks();
+          }
+        });
+      },
+      {
+        rootMargin: '50px',
+      }
+    );
+
+    // Observe the load more button when it's created
+    const loadMoreBtn = bookmarksList.querySelector('.load-more-btn');
+    if (loadMoreBtn) {
+      observer.observe(loadMoreBtn);
+    }
   }
 
   let sortAndRenderBookmarks = () => {

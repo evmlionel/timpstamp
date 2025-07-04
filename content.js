@@ -1,6 +1,139 @@
 let currentVideoId = null;
 let shortcutEnabled = true; // Default to enabled, will be updated from storage
 
+// Enhanced video element detection with multiple fallbacks
+function findVideoElement() {
+  const videoSelectors = [
+    'video[src*="youtube"]',
+    'video[src*="googlevideo"]',
+    '.html5-video-container video',
+    '.ytp-html5-video',
+    'video',
+  ];
+
+  for (const selector of videoSelectors) {
+    const video = document.querySelector(selector);
+    if (video?.duration && !Number.isNaN(video.currentTime)) {
+      return video;
+    }
+  }
+
+  return null;
+}
+
+// Enhanced video ID extraction with multiple methods
+function extractVideoId() {
+  // Method 1: URL parameter
+  const urlParams = new URLSearchParams(window.location.search);
+  const videoId = urlParams.get('v');
+  if (videoId) return videoId;
+
+  // Method 2: URL pathname for embedded videos
+  const pathMatch = window.location.pathname.match(/\/embed\/([a-zA-Z0-9_-]+)/);
+  if (pathMatch) return pathMatch[1];
+
+  // Method 3: Meta tags
+  const metaTags = [
+    'meta[property="og:url"]',
+    'meta[name="twitter:url"]',
+    'link[rel="canonical"]',
+  ];
+
+  for (const selector of metaTags) {
+    const element = document.querySelector(selector);
+    if (element) {
+      const url =
+        element.getAttribute('content') || element.getAttribute('href');
+      if (url) {
+        const match = url.match(/[?&]v=([a-zA-Z0-9_-]+)/);
+        if (match) return match[1];
+      }
+    }
+  }
+
+  return null;
+}
+
+// Enhanced video title extraction with comprehensive fallbacks
+function extractVideoTitle() {
+  const titleSelectors = [
+    // Primary YouTube selectors (most specific first)
+    'h1.ytd-watch-metadata yt-formatted-string#title',
+    'h1.title.ytd-video-primary-info-renderer yt-formatted-string',
+    '#container > h1.title > yt-formatted-string',
+    'h1.ytd-video-primary-info-renderer .ytd-video-primary-info-renderer',
+
+    // Alternative selectors for different YouTube layouts
+    '.ytd-video-primary-info-renderer h1',
+    '.watch-main-col h1',
+    '#watch-headline-title',
+    '#eow-title',
+
+    // Generic fallbacks
+    'h1[class*="title"]',
+    'h1[id*="title"]',
+    '.title h1',
+    'h1',
+  ];
+
+  // Try each selector
+  for (const selector of titleSelectors) {
+    try {
+      const element = document.querySelector(selector);
+      if (element?.textContent?.trim()) {
+        const title = element.textContent.trim();
+        if (title.length > 0 && title !== 'YouTube') {
+          return title;
+        }
+      }
+    } catch (_error) {}
+  }
+
+  // Meta tag fallbacks
+  const metaSelectors = [
+    'meta[property="og:title"]',
+    'meta[name="twitter:title"]',
+    'meta[name="title"]',
+  ];
+
+  for (const selector of metaSelectors) {
+    try {
+      const element = document.querySelector(selector);
+      if (element?.getAttribute('content')?.trim()) {
+        const title = element.getAttribute('content').trim();
+        if (title.length > 0 && !title.includes('YouTube')) {
+          return title;
+        }
+      }
+    } catch (_error) {}
+  }
+
+  // Document title fallback
+  try {
+    if (document.title) {
+      let title = document.title;
+
+      // Remove YouTube suffix
+      const suffixes = [' - YouTube', ' - YouTube TV', ' | YouTube'];
+      for (const suffix of suffixes) {
+        if (title.endsWith(suffix)) {
+          title = title.substring(0, title.length - suffix.length);
+          break;
+        }
+      }
+
+      title = title.trim();
+      if (title.length > 0) {
+        return title;
+      }
+    }
+  } catch (_error) {
+    // Ignore document.title errors
+  }
+
+  return 'Unknown Title';
+}
+
 // Function to load initial shortcut setting
 function loadShortcutSetting() {
   chrome.storage.sync.get('shortcutEnabled', (result) => {
@@ -15,45 +148,42 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
   }
 });
 
-// Save timestamp
-function saveTimestamp() {
+// Enhanced timestamp saving with retry logic and better error handling
+function saveTimestamp(retryCount = 0) {
+  const maxRetries = 3;
+
   try {
-    const video = document.querySelector('video');
+    // Enhanced video detection with multiple fallbacks
+    const video = findVideoElement();
     if (!video) {
-      showNotification('Error: Video not found');
+      if (retryCount < maxRetries) {
+        setTimeout(() => saveTimestamp(retryCount + 1), 500);
+        return;
+      }
+      showNotification('Error: Video player not found');
       return;
     }
 
-    const videoId = new URLSearchParams(window.location.search).get('v');
+    // Enhanced video ID extraction with fallbacks
+    const videoId = extractVideoId();
     if (!videoId) {
-      showNotification('Error: Video ID not found');
+      showNotification('Error: Cannot identify video');
       return;
     }
 
+    // Validate video time
     const currentTime = Math.floor(video.currentTime);
+    if (Number.isNaN(currentTime) || currentTime < 0) {
+      showNotification('Error: Invalid video time');
+      return;
+    }
+
     const hours = Math.floor(currentTime / 3600);
     const minutes = Math.floor((currentTime % 3600) / 60);
     const seconds = currentTime % 60;
 
-    // More robust title extraction
-    let videoTitle = 'Unknown Title';
-    const titleElement = document.querySelector(
-      'h1.ytd-watch-metadata yt-formatted-string#title, ' + // Refined primary selector
-        'h1.title.ytd-video-primary-info-renderer yt-formatted-string, ' + // Refined secondary selector
-        '#container > h1.title > yt-formatted-string' // Common alternative structure
-    );
-    if (titleElement?.textContent) {
-      videoTitle = titleElement.textContent.trim();
-    } else {
-      // Fallback to document title if specific element not found
-      if (document.title.endsWith(' - YouTube')) {
-        videoTitle = document.title
-          .substring(0, document.title.length - ' - YouTube'.length)
-          .trim();
-      } else {
-        videoTitle = document.title.trim(); // Use the full title if it doesn't end as expected
-      }
-    }
+    // Enhanced title extraction with multiple selectors and fallbacks
+    const videoTitle = extractVideoTitle();
 
     const formattedTime =
       hours > 0
@@ -71,14 +201,25 @@ function saveTimestamp() {
       savedAt: Date.now(),
     };
 
+    // Enhanced message sending with timeout handling
+    const messageTimeout = setTimeout(() => {
+      showNotification('Request timed out. Please try again.');
+    }, 10000);
+
     chrome.runtime.sendMessage(
       {
         type: 'ADD_BOOKMARK',
         data: bookmark,
       },
       (response) => {
+        clearTimeout(messageTimeout);
+
         if (chrome.runtime.lastError) {
-          showNotification('Failed to save timestamp ❌');
+          if (retryCount < maxRetries) {
+            setTimeout(() => saveTimestamp(retryCount + 1), 1000);
+            return;
+          }
+          showNotification('Extension unavailable. Please refresh the page.');
           return;
         }
 
@@ -86,30 +227,94 @@ function saveTimestamp() {
           showNotification(response.message || 'Timestamp saved! 🎉');
         } else {
           showNotification(
-            response?.error ? response.error : 'Failed to save timestamp ❌'
+            response?.error || 'Failed to save timestamp. Please try again.'
           );
         }
       }
     );
   } catch (_error) {
-    showNotification('Failed to save timestamp ❌');
+    if (retryCount < maxRetries) {
+      setTimeout(() => saveTimestamp(retryCount + 1), 1000);
+      return;
+    }
+    showNotification('Unexpected error. Please refresh the page.');
   }
 }
 
-// Show notification
+// Announce message to screen readers
+function announceToScreenReader(message) {
+  try {
+    // Remove existing announcements
+    const existing = document.querySelectorAll('.ytb-sr-announcement');
+    existing.forEach((el) => el.remove());
+
+    // Create new announcement
+    const announcement = document.createElement('div');
+    announcement.className = 'ytb-sr-announcement';
+    announcement.setAttribute('aria-live', 'polite');
+    announcement.setAttribute('aria-atomic', 'true');
+    announcement.style.cssText =
+      'position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;';
+    announcement.textContent = message;
+
+    document.body.appendChild(announcement);
+
+    // Remove after announcement
+    setTimeout(() => {
+      if (announcement.parentNode) {
+        announcement.remove();
+      }
+    }, 5000);
+  } catch (_error) {
+    // Ignore errors in screen reader announcements
+  }
+}
+
+// Enhanced notification with accessibility features
 function showNotification(message) {
   try {
-    const existing = document.querySelector('.ytb-notification'); // Use new class
+    const existing = document.querySelector('.ytb-notification');
     if (existing) {
       existing.remove();
     }
 
     const notification = document.createElement('div');
-    notification.className = 'ytb-notification'; // Use new class
+    notification.className = 'ytb-notification';
     notification.textContent = message;
-    // Styles are now applied via content.css
+
+    // Enhanced accessibility attributes
+    notification.setAttribute('role', 'status');
+    notification.setAttribute('aria-live', 'polite');
+    notification.setAttribute('aria-atomic', 'true');
+    notification.setAttribute('aria-label', message);
+
+    // High contrast support
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.9);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 4px;
+      font-size: 14px;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      z-index: 10000;
+      max-width: 300px;
+      border: 2px solid transparent;
+    `;
+
+    // High contrast mode detection and enhancement
+    if (window.matchMedia?.('(prefers-contrast: high)').matches) {
+      notification.style.border = '2px solid white';
+      notification.style.background = 'black';
+    }
 
     document.body.appendChild(notification);
+
+    // Also announce to screen readers
+    announceToScreenReader(message);
+
     setTimeout(() => {
       if (notification.parentNode) {
         notification.remove();
@@ -118,37 +323,114 @@ function showNotification(message) {
   } catch (_error) {}
 }
 
-// Create bookmark button
+// Create bookmark button with enhanced accessibility
 function createButton() {
   const button = document.createElement('button');
-  button.className = 'ytp-button ytb-bookmark-btn'; // Use new class
+  button.className = 'ytp-button ytb-bookmark-btn';
   button.title = 'Save timestamp (B)';
+
+  // Enhanced ARIA attributes for accessibility
+  button.setAttribute(
+    'aria-label',
+    'Save timestamp bookmark at current video position'
+  );
+  button.setAttribute('aria-describedby', 'ytb-bookmark-help');
+  button.setAttribute('aria-keyshortcuts', 'b');
+  button.setAttribute('role', 'button');
+  button.setAttribute('tabindex', '0');
+
   button.innerHTML = `
-        <svg height="100%" version="1.1" viewBox="0 0 24 24" width="100%">
+        <svg height="100%" version="1.1" viewBox="0 0 24 24" width="100%" aria-hidden="true">
             <path d="M17 3H7c-1.1 0-2 .9-2 2v16l7-3 7 3V5c0-1.1-.9-2-2-2z" fill="currentColor"/>
         </svg>
     `;
 
+  // Enhanced click handler with accessibility considerations
   button.addEventListener('click', (e) => {
     e.preventDefault();
     e.stopPropagation();
     saveTimestamp();
+
+    // Announce to screen readers
+    announceToScreenReader('Saving timestamp...');
   });
+
+  // Enhanced keyboard navigation support
+  button.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      e.stopPropagation();
+      saveTimestamp();
+      announceToScreenReader('Saving timestamp...');
+    }
+  });
+
+  // Create hidden help text for screen readers
+  const helpText = document.createElement('div');
+  helpText.id = 'ytb-bookmark-help';
+  helpText.className = 'sr-only';
+  helpText.textContent =
+    'Press to save the current video position as a bookmark. You can also use the B key as a shortcut.';
+  helpText.style.cssText =
+    'position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;';
+
+  document.body.appendChild(helpText);
 
   return button;
 }
 
-// Add bookmark button to player
-function addBookmarkButton() {
-  try {
-    if (document.querySelector('.ytb-bookmark-btn')) return;
+// Enhanced button injection with multiple fallback strategies
+function addBookmarkButton(retryCount = 0) {
+  const maxRetries = 10;
+  const retryDelay = 500;
 
-    const rightControls = document.querySelector('.ytp-right-controls');
-    if (!rightControls) return;
+  try {
+    // Check if button already exists
+    if (document.querySelector('.ytb-bookmark-btn')) return true;
+
+    // Try multiple control container selectors
+    const controlSelectors = [
+      '.ytp-right-controls',
+      '.ytp-chrome-controls .ytp-right-controls',
+      '.ytp-chrome-bottom .ytp-right-controls',
+      '.html5-video-controls .ytp-right-controls',
+    ];
+
+    let rightControls = null;
+    for (const selector of controlSelectors) {
+      rightControls = document.querySelector(selector);
+      if (rightControls) break;
+    }
+
+    if (!rightControls) {
+      if (retryCount < maxRetries) {
+        setTimeout(() => addBookmarkButton(retryCount + 1), retryDelay);
+        return false;
+      }
+      return false;
+    }
 
     const button = createButton();
-    rightControls.insertBefore(button, rightControls.firstChild);
-  } catch (_error) {}
+
+    // Try different insertion strategies
+    try {
+      rightControls.insertBefore(button, rightControls.firstChild);
+    } catch {
+      try {
+        rightControls.appendChild(button);
+      } catch {
+        return false;
+      }
+    }
+
+    return true;
+  } catch (_error) {
+    if (retryCount < maxRetries) {
+      setTimeout(() => addBookmarkButton(retryCount + 1), retryDelay);
+      return false;
+    }
+    return false;
+  }
 }
 
 // Handle keyboard shortcut
@@ -179,23 +461,43 @@ function handleKeyPress(event) {
   } catch (_error) {}
 }
 
-// Initialize extension
-function initialize() {
+// Enhanced initialization with better state management
+function initialize(retryCount = 0) {
+  const maxRetries = 5;
+
   try {
     // Load initial shortcut setting
     loadShortcutSetting();
 
-    const videoId = new URLSearchParams(window.location.search).get('v');
-    if (!videoId || videoId === currentVideoId) return;
+    // Enhanced video ID detection
+    const videoId = extractVideoId();
+    if (!videoId) {
+      if (retryCount < maxRetries) {
+        setTimeout(() => initialize(retryCount + 1), 1000);
+      }
+      return;
+    }
+
+    // Only reinitialize if video changed
+    if (videoId === currentVideoId) return;
     currentVideoId = videoId;
 
+    // Clean up existing button
     const existingButton = document.querySelector('.ytb-bookmark-btn');
     if (existingButton) {
       existingButton.remove();
     }
 
-    addBookmarkButton();
-  } catch (_error) {}
+    // Add button with retry logic
+    const buttonAdded = addBookmarkButton();
+    if (!buttonAdded && retryCount < maxRetries) {
+      setTimeout(() => initialize(retryCount + 1), 1000);
+    }
+  } catch (_error) {
+    if (retryCount < maxRetries) {
+      setTimeout(() => initialize(retryCount + 1), 1000);
+    }
+  }
 }
 
 // Set up observers and event listeners

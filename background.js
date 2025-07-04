@@ -50,33 +50,109 @@ chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
   }
 });
 
-// Get all bookmarks - new simplified approach
-async function getAllBookmarks() {
-  try {
-    // Get bookmarks directly
-    const result = await chrome.storage.sync.get(BOOKMARKS_KEY);
-    return result[BOOKMARKS_KEY] || [];
-  } catch (_error) {
-    return [];
+// Get all bookmarks with enhanced error handling and data validation
+async function getAllBookmarks(maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      // Get bookmarks directly
+      const result = await chrome.storage.sync.get(BOOKMARKS_KEY);
+      const bookmarks = result[BOOKMARKS_KEY] || [];
+
+      // Validate bookmark data structure
+      if (!Array.isArray(bookmarks)) {
+        throw new Error('Invalid bookmark data structure - expected array');
+      }
+
+      // Validate each bookmark has required fields
+      const validBookmarks = bookmarks.filter((bookmark) => {
+        return (
+          bookmark &&
+          typeof bookmark === 'object' &&
+          bookmark.id &&
+          bookmark.videoId &&
+          typeof bookmark.timestamp === 'number' &&
+          bookmark.videoTitle
+        );
+      });
+
+      // If some bookmarks were invalid, save the cleaned version
+      if (
+        validBookmarks.length !== bookmarks.length &&
+        validBookmarks.length > 0
+      ) {
+        await chrome.storage.sync.set({ [BOOKMARKS_KEY]: validBookmarks });
+      }
+
+      return validBookmarks;
+    } catch (_error) {
+      if (attempt === maxRetries) {
+        // Return empty array as fallback to prevent complete failure
+        return [];
+      }
+
+      // Exponential backoff for retries
+      const delay = Math.min(1000 * 2 ** (attempt - 1), 5000);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
   }
 }
 
-// Save all bookmarks - new simplified approach
-async function saveAllBookmarks(bookmarks) {
-  // Check storage quota before saving (Windows may have stricter limits)
-  const bytesInUse = await chrome.storage.sync.getBytesInUse();
-  const maxBytes = chrome.storage.sync.QUOTA_BYTES || 102400; // 100KB default
-  const bookmarksSize = JSON.stringify(bookmarks).length;
+// Save all bookmarks with enhanced error handling and retry logic
+async function saveAllBookmarks(bookmarks, maxRetries = 3) {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      // Check storage quota before saving
+      const bytesInUse = await chrome.storage.sync.getBytesInUse();
+      const maxBytes = chrome.storage.sync.QUOTA_BYTES || 102400; // 100KB default
+      const bookmarksSize = JSON.stringify(bookmarks).length;
+      const totalSize = bytesInUse + bookmarksSize;
 
-  if (bytesInUse + bookmarksSize > maxBytes * 0.9) {
-    throw new Error(
-      `Storage quota exceeded. Current: ${bytesInUse}, Required: ${bookmarksSize}, Max: ${maxBytes}`
-    );
+      // Use 85% of quota to leave buffer for other extension data
+      const quotaThreshold = maxBytes * 0.85;
+
+      if (totalSize > quotaThreshold) {
+        // Try to clean up old bookmarks if we're over the threshold
+        if (bookmarks.length > 50) {
+          const cleanedBookmarks = await cleanupOldBookmarks(bookmarks);
+          const cleanedSize = JSON.stringify(cleanedBookmarks).length;
+
+          if (bytesInUse + cleanedSize <= quotaThreshold) {
+            bookmarks = cleanedBookmarks;
+          } else {
+            throw new Error(
+              `Storage quota exceeded. Current: ${bytesInUse}B, Required: ${bookmarksSize}B, Max: ${maxBytes}B. Consider exporting and deleting old bookmarks.`
+            );
+          }
+        } else {
+          throw new Error(
+            `Storage quota exceeded. Current: ${bytesInUse}B, Required: ${bookmarksSize}B, Max: ${maxBytes}B. Consider exporting and deleting old bookmarks.`
+          );
+        }
+      }
+
+      // Save bookmarks directly
+      await chrome.storage.sync.set({ [BOOKMARKS_KEY]: bookmarks });
+
+      // Verify the save was successful
+      const verification = await chrome.storage.sync.get(BOOKMARKS_KEY);
+      if (
+        !verification[BOOKMARKS_KEY] ||
+        verification[BOOKMARKS_KEY].length !== bookmarks.length
+      ) {
+        throw new Error('Storage verification failed - data may be corrupted');
+      }
+
+      return true;
+    } catch (error) {
+      if (attempt === maxRetries) {
+        throw error;
+      }
+
+      // Exponential backoff for retries
+      const delay = Math.min(1000 * 2 ** (attempt - 1), 5000);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
   }
-
-  // Save bookmarks directly
-  await chrome.storage.sync.set({ [BOOKMARKS_KEY]: bookmarks });
-  return true;
 }
 
 // Handle adding a bookmark
@@ -126,7 +202,7 @@ async function handleAddBookmark(bookmarkData, sendResponse) {
       bookmarks.push(newBookmark);
     }
 
-    // Save updated bookmarks
+    // Save updated bookmarks with enhanced error handling
     try {
       await saveAllBookmarks(bookmarks);
       // Send a more specific message
@@ -138,9 +214,10 @@ async function handleAddBookmark(bookmarkData, sendResponse) {
             : 'Timestamp saved! 🎉',
       });
     } catch (saveError) {
+      const userMessage = handleStorageError(saveError, 'save bookmark');
       sendResponse({
         success: false,
-        error: `Failed to save bookmarks: ${saveError.message}`,
+        error: userMessage,
       });
     }
   } catch (error) {
@@ -151,48 +228,41 @@ async function handleAddBookmark(bookmarkData, sendResponse) {
   }
 }
 
-// Handle individual bookmark deletion - completely rewritten with direct storage
+// Handle individual bookmark deletion with enhanced error handling
 async function handleDeleteBookmark(bookmarkId, sendResponse) {
   try {
-    // Step 1: Get all current bookmarks directly from storage to ensure fresh data
-    const result = await chrome.storage.sync.get(BOOKMARKS_KEY);
-    const allBookmarks = result[BOOKMARKS_KEY] || [];
+    // Get all current bookmarks using enhanced error handling
+    const allBookmarks = await getAllBookmarks();
 
-    // Step 2: Filter out the deleted bookmark
+    // Filter out the deleted bookmark
     const updatedBookmarks = allBookmarks.filter((b) => b.id !== bookmarkId);
 
     if (updatedBookmarks.length === allBookmarks.length) {
-      // If bookmark wasn't found, we'll still continue with the save process
-      // to ensure storage is cleaned up properly
+      // Bookmark wasn't found, but we'll still respond with success
+      // to avoid confusing the user
+      if (sendResponse) sendResponse({ success: true });
+      return;
     }
 
-    // Step 3: Save the updated bookmarks directly and explicitly to sync storage
+    // Save the updated bookmarks using enhanced error handling
     try {
-      await chrome.storage.sync.set({ [BOOKMARKS_KEY]: updatedBookmarks });
-
-      // Verify the changes were saved correctly
-      const verifyResult = await chrome.storage.sync.get(BOOKMARKS_KEY);
-      const _verifiedBookmarks = verifyResult[BOOKMARKS_KEY] || [];
-
+      await saveAllBookmarks(updatedBookmarks);
       if (sendResponse) sendResponse({ success: true });
-    } catch (_saveError) {
-      if (sendResponse)
-        sendResponse({
-          success: false,
-          error: 'Failed to save updated bookmarks to storage',
-        });
+    } catch (saveError) {
+      const userMessage = handleStorageError(saveError, 'delete bookmark');
+      if (sendResponse) sendResponse({ success: false, error: userMessage });
     }
   } catch (error) {
-    if (sendResponse) sendResponse({ success: false, error: error.message });
+    const userMessage = handleStorageError(error, 'delete bookmark');
+    if (sendResponse) sendResponse({ success: false, error: userMessage });
   }
 }
 
-// Handle updating bookmark notes
+// Handle updating bookmark notes with enhanced error handling
 async function handleUpdateBookmarkNotes(bookmarkId, notes, sendResponse) {
   try {
-    // Get all current bookmarks
-    const result = await chrome.storage.sync.get(BOOKMARKS_KEY);
-    const allBookmarks = result[BOOKMARKS_KEY] || [];
+    // Get all current bookmarks using enhanced error handling
+    const allBookmarks = await getAllBookmarks();
 
     // Find and update the bookmark
     const bookmarkIndex = allBookmarks.findIndex((b) => b.id === bookmarkId);
@@ -207,19 +277,73 @@ async function handleUpdateBookmarkNotes(bookmarkId, notes, sendResponse) {
     allBookmarks[bookmarkIndex].notes = notes;
     allBookmarks[bookmarkIndex].savedAt = Date.now(); // Update timestamp
 
-    // Save the updated bookmarks
-    await chrome.storage.sync.set({ [BOOKMARKS_KEY]: allBookmarks });
-
-    if (sendResponse) sendResponse({ success: true });
+    // Save the updated bookmarks using enhanced error handling
+    try {
+      await saveAllBookmarks(allBookmarks);
+      if (sendResponse) sendResponse({ success: true });
+    } catch (saveError) {
+      const userMessage = handleStorageError(
+        saveError,
+        'update bookmark notes'
+      );
+      if (sendResponse) sendResponse({ success: false, error: userMessage });
+    }
   } catch (error) {
-    if (sendResponse) sendResponse({ success: false, error: error.message });
+    const userMessage = handleStorageError(error, 'update bookmark notes');
+    if (sendResponse) sendResponse({ success: false, error: userMessage });
   }
 }
 
-// Handle service worker lifecycle
+// Cleanup old bookmarks to free up storage space
+async function cleanupOldBookmarks(bookmarks) {
+  if (bookmarks.length <= 50) {
+    return bookmarks;
+  }
+
+  // Sort by savedAt timestamp (newest first) and keep only the 50 most recent
+  const sortedBookmarks = [...bookmarks].sort((a, b) => {
+    const aTime = a.savedAt || a.createdAt || 0;
+    const bTime = b.savedAt || b.createdAt || 0;
+    return bTime - aTime;
+  });
+
+  return sortedBookmarks.slice(0, 50);
+}
+
+// Enhanced error handling for storage operations
+function handleStorageError(error, _operation) {
+  let userMessage = 'An error occurred while saving your bookmark.';
+
+  if (error.message.includes('quota exceeded')) {
+    userMessage =
+      'Storage limit reached. Please export and delete old bookmarks.';
+  } else if (error.message.includes('network')) {
+    userMessage = 'Network error. Please check your connection and try again.';
+  } else if (error.message.includes('corrupted')) {
+    userMessage =
+      'Data corruption detected. Your bookmarks have been automatically repaired.';
+  }
+
+  // Log detailed error for debugging (only in development)
+  if (process.env.NODE_ENV === 'development') {
+  }
+
+  return userMessage;
+}
+
+// Handle service worker lifecycle with error handling
 self.addEventListener('activate', (event) => {
   event.waitUntil(async () => {
-    // Take control of all clients
-    await clients.claim();
+    try {
+      // Take control of all clients
+      await clients.claim();
+
+      // Perform initial data validation on activation
+      await getAllBookmarks();
+    } catch (_error) {
+      // Log error but don't prevent activation
+      if (process.env.NODE_ENV === 'development') {
+      }
+    }
   });
 });

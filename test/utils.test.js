@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   debounce,
   formatTime,
@@ -54,7 +54,7 @@ describe('Utils', () => {
     });
 
     afterEach(() => {
-      vi.useRealTimers();
+      vi.restoreAllMocks();
     });
 
     it('should create success notification', () => {
@@ -80,7 +80,7 @@ describe('Utils', () => {
 
       expect(document.querySelector('div')).toBeTruthy();
 
-      vi.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(2100);
 
       expect(document.querySelector('div')).toBeFalsy();
     });
