@@ -465,9 +465,8 @@ document.addEventListener('DOMContentLoaded', () => {
     editNoteBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       e.preventDefault();
-      const isEditing = notesEditorContainer.style.display === 'block';
-      notesEditorContainer.style.display = isEditing ? 'none' : 'block';
-      if (!isEditing) {
+      notesEditorContainer.classList.toggle('notes-collapsed');
+      if (!notesEditorContainer.classList.contains('notes-collapsed')) {
         notesTextarea.focus();
       }
     });
@@ -497,7 +496,7 @@ document.addEventListener('DOMContentLoaded', () => {
     notesTextarea.addEventListener('blur', () => {
       setTimeout(() => {
         if (document.activeElement !== editNoteBtn) {
-          notesEditorContainer.style.display = 'none';
+          notesEditorContainer.classList.add('notes-collapsed');
           if (saveNotes.flush) saveNotes.flush();
         }
       }, 150);

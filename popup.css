@@ -218,8 +218,16 @@ h2 {
 }
 
 .notes-editor-container {
-  padding: 0 12px 12px 12px;
   background: var(--bg-secondary);
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+  padding: 0 12px;
+}
+
+.notes-editor-container:not(.notes-collapsed) {
+  max-height: 200px; /* Adjust as needed */
+  padding: 0 12px 12px 12px;
 }
 
 .notes-editor {
