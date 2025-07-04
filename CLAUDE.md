@@ -27,11 +27,21 @@ npm run check
 
 # Fix all issues automatically
 npm run check:fix
+```
 
-# Testing
-npm test        # Run tests in watch mode
-npm run test:run # Run tests once
-npm run test:ui  # Run tests with UI
+### Testing
+```bash
+# Run tests in watch mode
+npm test
+
+# Run tests once
+npm run test:run
+
+# Run tests with UI
+npm run test:ui
+
+# Run tests with bun (alternative)
+bun test
 ```
 
 ### Development
@@ -48,6 +58,14 @@ npm run test:ui  # Run tests with UI
 - `popup.js` - Popup interface for managing bookmarks
 - `src/utils.js` - Shared utility functions (ES6 modules)
 
+### Extension Communication Flow
+
+The extension uses a three-way communication pattern:
+
+1. **Content Script → Background**: Messages for bookmark operations (`ADD_BOOKMARK`, `DELETE_BOOKMARK`)
+2. **Background → Storage**: All storage operations are centralized in the background service worker
+3. **Popup ↔ Storage**: Direct storage access for UI operations (search, sort, display)
+
 ### Key Components
 
 #### Storage Architecture
@@ -57,22 +75,35 @@ npm run test:ui  # Run tests with UI
 - Bookmark ID is the YouTube video ID for uniqueness
 - Supports undo functionality for deletions
 
-#### Content Script Integration
+#### Content Script Integration (`content.js`)
 - Dynamically injects a bookmark button into YouTube's video player controls  
 - Uses class `ytp-button ytb-bookmark-btn` for styling consistency
 - Keyboard shortcut 'B' key (can be toggled on/off)
 - Listens for YouTube's SPA navigation via `yt-navigate-finish` event
+- Robust title extraction with multiple fallback selectors
+- MutationObserver for detecting player DOM changes
 
-#### Background Service Worker
+#### Background Service Worker (`background.js`)
 - Handles all storage operations (add, delete, clear all bookmarks)
-- Implements keep-alive mechanism using `chrome.alarms` API
+- Implements keep-alive mechanism using `chrome.alarms` API (every 30 seconds)
 - Message-based communication with content script and popup
+- Centralizes bookmark CRUD operations to prevent data corruption
+- Storage key constant: `BOOKMARKS_KEY = 'timpstamp_bookmarks'`
 
-#### Popup Interface
+#### Popup Interface (`popup.js`)
 - Real-time search and sorting of bookmarks
-- Notes editing with auto-save functionality  
+- Bulk operations (select multiple, export, delete)
+- Dark mode toggle with theme persistence
+- Export/import functionality (JSON format)
 - Undo functionality for bookmark deletions
 - Thumbnail loading with error handling
+- Keyboard navigation support
+
+### DPI Scaling Considerations
+- Fixed popup width (400px) with responsive thumbnail sizing
+- Media queries for high-DPI displays (144dpi, 192dpi)
+- Thumbnail sizes scale down on high-DPI: 80px → 70px → 65px
+- Text sizing remains consistent across different screen densities
 
 ### Code Style
 - Uses Biome for linting and formatting (configured in `biome.json`)
@@ -84,9 +115,10 @@ npm run test:ui  # Run tests with UI
 - Manifest V3 service worker architecture
 - Direct storage approach (no chunking) for bookmark data
 - MutationObserver for detecting YouTube player changes
-- Debounced search and auto-save functionality
+- Debounced search and auto-save functionality (300ms search, 500ms notes)
 - Error handling for thumbnail loading failures
 - YouTube video ID extraction from URL parameters
+- Bookmark button injection uses `ytp-*` classes for YouTube styling consistency
 
 ### Error Handling Strategy
 - **Storage Operations**: Functions throw specific errors with descriptive messages rather than logging
@@ -95,3 +127,16 @@ npm run test:ui  # Run tests with UI
 - **No Console Logging**: Production code avoids console.* methods to maintain clean browser console
 - **Graceful Degradation**: UI components handle missing data and API failures without breaking
 - **Error Propagation**: Lower-level functions throw errors; higher-level functions handle them appropriately
+
+### Testing Infrastructure
+- Chrome extension APIs mocked in `test/setup.js`
+- DOM APIs (MutationObserver, IntersectionObserver) properly mocked
+- Vitest configuration with jsdom environment
+- Test files follow pattern: `*.test.js` in `/test` directory
+
+### Development Roadmap
+See `/specs/DEVELOPMENT_ROADMAP.md` for:
+- Priority tasks and technical debt
+- Performance optimization targets
+- Accessibility requirements
+- Future feature enhancements
