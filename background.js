@@ -196,9 +196,10 @@ async function handleUpdateBookmarkNotes(bookmarkId, notes, sendResponse) {
 
     // Find and update the bookmark
     const bookmarkIndex = allBookmarks.findIndex((b) => b.id === bookmarkId);
-    
+
     if (bookmarkIndex === -1) {
-      if (sendResponse) sendResponse({ success: false, error: 'Bookmark not found' });
+      if (sendResponse)
+        sendResponse({ success: false, error: 'Bookmark not found' });
       return;
     }
 

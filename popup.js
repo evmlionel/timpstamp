@@ -371,7 +371,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const div = document.createElement('div');
     div.className = 'bookmark-card';
     const bookmarkId = bookmark.id;
-    const notes = bookmark.notes || '';
+    const _notes = bookmark.notes || '';
 
     div.dataset.bookmarkId = bookmarkId;
 
@@ -432,8 +432,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const idToDelete = deleteBtn.dataset.bookmarkId;
       initiateDeleteWithUndo(idToDelete);
     });
-
-    
 
     const checkbox = div.querySelector('.bookmark-checkbox');
     checkbox.addEventListener('click', stopPropagation);
@@ -642,8 +640,11 @@ document.addEventListener('DOMContentLoaded', () => {
   // Global keyboard event listener
   document.addEventListener('keydown', (e) => {
     // Only handle if search input or textarea is not focused
-    if (document.activeElement === searchInput || 
-        document.activeElement.tagName === 'TEXTAREA') return;
+    if (
+      document.activeElement === searchInput ||
+      document.activeElement.tagName === 'TEXTAREA'
+    )
+      return;
 
     const cards = bookmarkCards();
     if (cards.length === 0) return;

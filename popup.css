@@ -145,7 +145,6 @@ h2 {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  
 }
 
 .video-title {
@@ -170,6 +169,12 @@ h2 {
   padding: 4px 12px; /* Reduced vertical padding */
   background: var(--bg-secondary);
   border-top: 1px solid var(--border-primary);
+}
+
+.bookmark-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .saved-date {
@@ -758,9 +763,9 @@ h2 {
 }
 
 .toggle-control {
-    display: flex;
-    align-items: center;
-    gap: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .toggle-control label {
@@ -779,13 +784,13 @@ h2 {
 }
 
 .toggle-control kbd {
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-primary);
-    border-radius: 3px;
-    padding: 1px 5px;
-    font-size: 11px;
-    font-family: monospace;
-    color: var(--text-primary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-primary);
+  border-radius: 3px;
+  padding: 1px 5px;
+  font-size: 11px;
+  font-family: monospace;
+  color: var(--text-primary);
 }
 
 /* Keyboard navigation styles */
@@ -1089,8 +1094,6 @@ h2 {
     content: "...";
   }
 }
-
-
 
 /* Fallback for browsers that don't support line-clamp */
 @supports not (-webkit-line-clamp: 2) {
