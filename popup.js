@@ -387,16 +387,12 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <div class="bookmark-details">
             <div class="video-title" title="${bookmark.videoTitle}">${bookmark.videoTitle}</div>
-            <div class="note-preview"></div>
           </div>
         </div>
       </a>
       <div class="bookmark-meta">
           <span class="saved-date">Saved: ${new Date(bookmark.savedAt || bookmark.createdAt).toLocaleDateString()}</span>
           <div class="bookmark-actions">
-              <button class="edit-note-btn icon-btn" title="Add/Edit Note">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-              </button>
               <button class="share-btn icon-btn" data-url="${bookmark.url}" title="Copy link to clipboard">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92zM18 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM6 13c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm12 7.02c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z" fill="currentColor"/></svg>
               </button>
@@ -404,11 +400,6 @@ document.addEventListener('DOMContentLoaded', () => {
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
               </button>
           </div>
-      </div>
-    </div>
-    <div class="notes-editor-container" style="display: none;">
-      <div class="notes-editor">
-        <textarea class="notes-textarea" data-bookmark-id="${bookmarkId}" placeholder="Add a note...">${notes}</textarea>
       </div>
     </div>
   `;
@@ -442,76 +433,7 @@ document.addEventListener('DOMContentLoaded', () => {
       initiateDeleteWithUndo(idToDelete);
     });
 
-    const editNoteBtn = div.querySelector('.edit-note-btn');
-    const notesEditorContainer = div.querySelector('.notes-editor-container');
-    const notesTextarea = div.querySelector('.notes-textarea');
-    const notePreview = div.querySelector('.note-preview');
-
-    function updateNotePreview() {
-      const currentNotes = notesTextarea.value.trim();
-      if (currentNotes) {
-        notePreview.textContent = currentNotes;
-        notePreview.style.display = 'block';
-        editNoteBtn.title = 'Edit Note';
-      } else {
-        notePreview.textContent = '';
-        notePreview.style.display = 'none';
-        editNoteBtn.title = 'Add Note';
-      }
-    }
-
-    updateNotePreview();
-
-    editNoteBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      e.preventDefault();
-      notesEditorContainer.classList.toggle('notes-collapsed');
-      if (!notesEditorContainer.classList.contains('notes-collapsed')) {
-        notesTextarea.focus();
-      }
-    });
-
-    const saveNotes = debounce(async () => {
-      const updatedNotes = notesTextarea.value.trim();
-      try {
-        const result = await chrome.storage.sync.get('timpstamp_bookmarks');
-        const bookmarks = result.timpstamp_bookmarks || [];
-        const bookmarkIndex = bookmarks.findIndex((b) => b.id === bookmarkId);
-        if (bookmarkIndex !== -1) {
-          if (bookmarks[bookmarkIndex].notes !== updatedNotes) {
-            bookmarks[bookmarkIndex].notes = updatedNotes;
-            await chrome.storage.sync.set({ timpstamp_bookmarks: bookmarks });
-            showNotification('Note saved', 'success', notificationArea);
-          }
-        }
-        updateNotePreview();
-      } catch (error) {
-        console.error('Failed to save notes:', error);
-        showNotification('Failed to save note', 'error', notificationArea);
-      }
-    }, 500);
-
-    notesTextarea.addEventListener('input', saveNotes);
-
-    notesTextarea.addEventListener('blur', () => {
-      setTimeout(() => {
-        if (document.activeElement !== editNoteBtn) {
-          notesEditorContainer.classList.add('notes-collapsed');
-          if (saveNotes.flush) saveNotes.flush();
-        }
-      }, 150);
-    });
-
-    notesTextarea.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        notesTextarea.blur();
-      }
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        notesTextarea.blur();
-      }
-    });
+    
 
     const checkbox = div.querySelector('.bookmark-checkbox');
     checkbox.addEventListener('click', stopPropagation);
