@@ -54,30 +54,9 @@ function extractVideoId() {
   return null;
 }
 
-// Enhanced video title extraction with comprehensive fallbacks
-function extractVideoTitle() {
-  const titleSelectors = [
-    // Primary YouTube selectors (most specific first)
-    'h1.ytd-watch-metadata yt-formatted-string#title',
-    'h1.title.ytd-video-primary-info-renderer yt-formatted-string',
-    '#container > h1.title > yt-formatted-string',
-    'h1.ytd-video-primary-info-renderer .ytd-video-primary-info-renderer',
-
-    // Alternative selectors for different YouTube layouts
-    '.ytd-video-primary-info-renderer h1',
-    '.watch-main-col h1',
-    '#watch-headline-title',
-    '#eow-title',
-
-    // Generic fallbacks
-    'h1[class*="title"]',
-    'h1[id*="title"]',
-    '.title h1',
-    'h1',
-  ];
-
-  // Try each selector
-  for (const selector of titleSelectors) {
+// Helper function to extract title from DOM selectors
+function extractTitleFromSelectors(selectors) {
+  for (const selector of selectors) {
     try {
       const element = document.querySelector(selector);
       if (element?.textContent?.trim()) {
@@ -88,15 +67,12 @@ function extractVideoTitle() {
       }
     } catch (_error) {}
   }
+  return null;
+}
 
-  // Meta tag fallbacks
-  const metaSelectors = [
-    'meta[property="og:title"]',
-    'meta[name="twitter:title"]',
-    'meta[name="title"]',
-  ];
-
-  for (const selector of metaSelectors) {
+// Helper function to extract title from meta tags
+function extractTitleFromMeta(selectors) {
+  for (const selector of selectors) {
     try {
       const element = document.querySelector(selector);
       if (element?.getAttribute('content')?.trim()) {
@@ -107,29 +83,65 @@ function extractVideoTitle() {
       }
     } catch (_error) {}
   }
+  return null;
+}
 
-  // Document title fallback
+// Helper function to clean document title
+function cleanDocumentTitle() {
   try {
-    if (document.title) {
-      let title = document.title;
+    if (!document.title) return null;
 
-      // Remove YouTube suffix
-      const suffixes = [' - YouTube', ' - YouTube TV', ' | YouTube'];
-      for (const suffix of suffixes) {
-        if (title.endsWith(suffix)) {
-          title = title.substring(0, title.length - suffix.length);
-          break;
-        }
-      }
+    let title = document.title;
+    const suffixes = [' - YouTube', ' - YouTube TV', ' | YouTube'];
 
-      title = title.trim();
-      if (title.length > 0) {
-        return title;
+    for (const suffix of suffixes) {
+      if (title.endsWith(suffix)) {
+        title = title.substring(0, title.length - suffix.length);
+        break;
       }
     }
+
+    title = title.trim();
+    return title.length > 0 ? title : null;
   } catch (_error) {
-    // Ignore document.title errors
+    return null;
   }
+}
+
+// Enhanced video title extraction with comprehensive fallbacks
+function extractVideoTitle() {
+  const titleSelectors = [
+    'h1.ytd-watch-metadata yt-formatted-string#title',
+    'h1.title.ytd-video-primary-info-renderer yt-formatted-string',
+    '#container > h1.title > yt-formatted-string',
+    'h1.ytd-video-primary-info-renderer .ytd-video-primary-info-renderer',
+    '.ytd-video-primary-info-renderer h1',
+    '.watch-main-col h1',
+    '#watch-headline-title',
+    '#eow-title',
+    'h1[class*="title"]',
+    'h1[id*="title"]',
+    '.title h1',
+    'h1',
+  ];
+
+  const metaSelectors = [
+    'meta[property="og:title"]',
+    'meta[name="twitter:title"]',
+    'meta[name="title"]',
+  ];
+
+  // Try DOM selectors first
+  const titleFromDOM = extractTitleFromSelectors(titleSelectors);
+  if (titleFromDOM) return titleFromDOM;
+
+  // Try meta tags
+  const titleFromMeta = extractTitleFromMeta(metaSelectors);
+  if (titleFromMeta) return titleFromMeta;
+
+  // Try document title
+  const titleFromDoc = cleanDocumentTitle();
+  if (titleFromDoc) return titleFromDoc;
 
   return 'Unknown Title';
 }

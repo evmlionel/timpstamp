@@ -97,50 +97,55 @@ async function getAllBookmarks(maxRetries = 3) {
   }
 }
 
+// Helper function to check storage quota and clean up if needed
+async function checkAndCleanupStorage(bookmarks) {
+  const bytesInUse = await chrome.storage.sync.getBytesInUse();
+  const maxBytes = chrome.storage.sync.QUOTA_BYTES || 102400; // 100KB default
+  const bookmarksSize = JSON.stringify(bookmarks).length;
+  const totalSize = bytesInUse + bookmarksSize;
+  const quotaThreshold = maxBytes * 0.85;
+
+  if (totalSize <= quotaThreshold) {
+    return bookmarks;
+  }
+
+  if (bookmarks.length > 50) {
+    const cleanedBookmarks = await cleanupOldBookmarks(bookmarks);
+    const cleanedSize = JSON.stringify(cleanedBookmarks).length;
+
+    if (bytesInUse + cleanedSize <= quotaThreshold) {
+      return cleanedBookmarks;
+    }
+  }
+
+  throw new Error(
+    `Storage quota exceeded. Current: ${bytesInUse}B, Required: ${bookmarksSize}B, Max: ${maxBytes}B. Consider exporting and deleting old bookmarks.`
+  );
+}
+
+// Helper function to verify storage operation
+async function verifyStorageOperation(bookmarks) {
+  const verification = await chrome.storage.sync.get(BOOKMARKS_KEY);
+  if (
+    !verification[BOOKMARKS_KEY] ||
+    verification[BOOKMARKS_KEY].length !== bookmarks.length
+  ) {
+    throw new Error('Storage verification failed - data may be corrupted');
+  }
+}
+
 // Save all bookmarks with enhanced error handling and retry logic
 async function saveAllBookmarks(bookmarks, maxRetries = 3) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      // Check storage quota before saving
-      const bytesInUse = await chrome.storage.sync.getBytesInUse();
-      const maxBytes = chrome.storage.sync.QUOTA_BYTES || 102400; // 100KB default
-      const bookmarksSize = JSON.stringify(bookmarks).length;
-      const totalSize = bytesInUse + bookmarksSize;
-
-      // Use 85% of quota to leave buffer for other extension data
-      const quotaThreshold = maxBytes * 0.85;
-
-      if (totalSize > quotaThreshold) {
-        // Try to clean up old bookmarks if we're over the threshold
-        if (bookmarks.length > 50) {
-          const cleanedBookmarks = await cleanupOldBookmarks(bookmarks);
-          const cleanedSize = JSON.stringify(cleanedBookmarks).length;
-
-          if (bytesInUse + cleanedSize <= quotaThreshold) {
-            bookmarks = cleanedBookmarks;
-          } else {
-            throw new Error(
-              `Storage quota exceeded. Current: ${bytesInUse}B, Required: ${bookmarksSize}B, Max: ${maxBytes}B. Consider exporting and deleting old bookmarks.`
-            );
-          }
-        } else {
-          throw new Error(
-            `Storage quota exceeded. Current: ${bytesInUse}B, Required: ${bookmarksSize}B, Max: ${maxBytes}B. Consider exporting and deleting old bookmarks.`
-          );
-        }
-      }
+      // Check storage quota and clean up if needed
+      const processedBookmarks = await checkAndCleanupStorage(bookmarks);
 
       // Save bookmarks directly
-      await chrome.storage.sync.set({ [BOOKMARKS_KEY]: bookmarks });
+      await chrome.storage.sync.set({ [BOOKMARKS_KEY]: processedBookmarks });
 
       // Verify the save was successful
-      const verification = await chrome.storage.sync.get(BOOKMARKS_KEY);
-      if (
-        !verification[BOOKMARKS_KEY] ||
-        verification[BOOKMARKS_KEY].length !== bookmarks.length
-      ) {
-        throw new Error('Storage verification failed - data may be corrupted');
-      }
+      await verifyStorageOperation(processedBookmarks);
 
       return true;
     } catch (error) {
@@ -324,10 +329,6 @@ function handleStorageError(error, _operation) {
       'Data corruption detected. Your bookmarks have been automatically repaired.';
   }
 
-  // Log detailed error for debugging (only in development)
-  if (process.env.NODE_ENV === 'development') {
-  }
-
   return userMessage;
 }
 
@@ -340,10 +341,6 @@ self.addEventListener('activate', (event) => {
 
       // Perform initial data validation on activation
       await getAllBookmarks();
-    } catch (_error) {
-      // Log error but don't prevent activation
-      if (process.env.NODE_ENV === 'development') {
-      }
-    }
+    } catch (_error) {}
   });
 });

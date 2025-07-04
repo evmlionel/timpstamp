@@ -244,11 +244,16 @@ document.addEventListener('DOMContentLoaded', () => {
     selectedCount.textContent = `${selectedBookmarks.size} selected`;
   }
 
-  function exportSelectedBookmarks() {
+  function checkSelectedBookmarks() {
     if (selectedBookmarks.size === 0) {
       showNotification('No bookmarks selected', 'error', notificationArea);
-      return;
+      return false;
     }
+    return true;
+  }
+
+  function exportSelectedBookmarks() {
+    if (!checkSelectedBookmarks()) return;
 
     const bookmarksToExport = allBookmarks.filter((b) =>
       selectedBookmarks.has(b.id)
@@ -279,10 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function deleteSelectedBookmarks() {
-    if (selectedBookmarks.size === 0) {
-      showNotification('No bookmarks selected', 'error', notificationArea);
-      return;
-    }
+    if (!checkSelectedBookmarks()) return;
 
     if (
       !confirm(
@@ -392,11 +394,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // Use DocumentFragment for better performance
     const fragment = document.createDocumentFragment();
 
-    pageBookmarks.forEach((bookmark, index) => {
-      const bookmarkElement = createBookmarkElement(
-        bookmark,
-        startIndex + index
-      );
+    pageBookmarks.forEach((bookmark) => {
+      const bookmarkElement = createBookmarkElement(bookmark);
       fragment.appendChild(bookmarkElement);
     });
 
@@ -477,12 +476,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // createBookmarkElement function remains largely the same but will be appended directly
   // Ensure createBookmarkElement is defined before this point if it's not hoisted, or move its definition up
-  function createBookmarkElement(bookmark, _index) {
+  function createBookmarkElement(bookmark) {
     const thumbnailUrl = `https://i.ytimg.com/vi/${bookmark.videoId}/mqdefault.jpg`;
     const div = document.createElement('div');
     div.className = 'bookmark-card';
     const bookmarkId = bookmark.id;
-    const _notes = bookmark.notes || '';
 
     div.dataset.bookmarkId = bookmarkId;
 
@@ -578,7 +576,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let undoState = { bookmarkToRestore: null, timeoutId: null }; // Store the whole bookmark for restoration
 
-  // *** NEW: Function to orchestrate instant deletion and then show undo ***
+  // Function to orchestrate instant deletion and then show undo
   async function initiateDeleteWithUndo(bookmarkId) {
     const deletedBookmark = await deleteBookmarkFromStorage(bookmarkId); // Delete first
 
@@ -608,7 +606,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 5000); // 5 seconds to undo
   }
 
-  // *** NEW: Separate function to handle the Undo button click ***
+  // Function to handle the Undo button click
   async function handleUndoClick() {
     if (undoState.timeoutId) {
       clearTimeout(undoState.timeoutId); // Prevent timeout from clearing state
@@ -635,7 +633,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const result = await chrome.storage.sync.get('timpstamp_bookmarks');
       let bookmarks = result.timpstamp_bookmarks || [];
 
-      // *** CHANGE: Find the bookmark first to return its data ***
+      // Find the bookmark first to return its data
       deletedBookmark = bookmarks.find((b) => b.id === bookmarkId) || null;
 
       bookmarks = bookmarks.filter((b) => b.id !== bookmarkId);
@@ -643,14 +641,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
       await chrome.storage.sync.set({ timpstamp_bookmarks: bookmarks });
       showNotification('Bookmark deleted.', 'success', notificationArea);
-      return deletedBookmark; // *** CHANGE: Return the data of the deleted item ***
+      return deletedBookmark;
     } catch (_error) {
       showNotification('Failed to delete bookmark.', 'error', notificationArea);
       return null; // Indicate failure
     }
   }
 
-  // *** NEW: Function to restore a bookmark ***
+  // Function to restore a bookmark
   async function restoreBookmark(bookmarkToRestore) {
     try {
       const result = await chrome.storage.sync.get('timpstamp_bookmarks');
