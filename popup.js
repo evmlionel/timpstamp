@@ -377,35 +377,39 @@ document.addEventListener('DOMContentLoaded', () => {
 
     div.innerHTML = `
     <input type="checkbox" class="bookmark-checkbox" data-bookmark-id="${bookmarkId}">
-    <a href="${bookmark.url}" target="_blank" class="bookmark-link">
-      <div class="bookmark-card-inner">
-        <div class="thumbnail-container">
-          <img class="thumbnail" src="${thumbnailUrl}" alt="Video thumbnail"/>
-          <div class="thumbnail-placeholder"></div>
-          <div class="timestamp-badge">${formatTime(bookmark.timestamp)}</div>
+    <div class="bookmark-card-content">
+      <a href="${bookmark.url}" target="_blank" class="bookmark-link">
+        <div class="bookmark-card-inner">
+          <div class="thumbnail-container">
+            <img class="thumbnail" src="${thumbnailUrl}" alt="Video thumbnail"/>
+            <div class="thumbnail-placeholder"></div>
+            <div class="timestamp-badge">${formatTime(bookmark.timestamp)}</div>
+          </div>
+          <div class="bookmark-details">
+            <div class="video-title" title="${bookmark.videoTitle}">${bookmark.videoTitle}</div>
+            <div class="note-preview"></div>
+          </div>
         </div>
-        <div class="bookmark-details">
-          <div class="video-title" title="${bookmark.videoTitle}">${bookmark.videoTitle}</div>
-          
-        </div>
+      </a>
+      <div class="bookmark-meta">
+          <span class="saved-date">Saved: ${new Date(bookmark.savedAt || bookmark.createdAt).toLocaleDateString()}</span>
+          <div class="bookmark-actions">
+              <button class="edit-note-btn icon-btn" title="Add/Edit Note">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+              </button>
+              <button class="share-btn icon-btn" data-url="${bookmark.url}" title="Copy link to clipboard">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92zM18 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM6 13c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm12 7.02c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z" fill="currentColor"/></svg>
+              </button>
+              <button class="delete-btn icon-btn" data-bookmark-id="${bookmarkId}" title="Delete timestamp">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+              </button>
+          </div>
       </div>
-    </a>
-    <div class="bookmark-meta">
-        <span class="saved-date">Saved: ${new Date(bookmark.savedAt || bookmark.createdAt).toLocaleDateString()}</span>
-        <div class="bookmark-actions">
-            <button class="edit-note-btn icon-btn" title="Add/Edit Note">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-            </button>
-            <button class="share-btn icon-btn" data-url="${bookmark.url}" title="Copy link to clipboard">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92zM18 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM6 13c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm12 7.02c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z" fill="currentColor"/></svg>
-            </button>
-            <button class="delete-btn icon-btn" data-bookmark-id="${bookmarkId}" title="Delete timestamp">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-            </button>
-        </div>
     </div>
-    <div class="notes-editor" style="display: none;">
-      <textarea class="notes-textarea" data-bookmark-id="${bookmarkId}" placeholder="Add a note...">${notes}</textarea>
+    <div class="notes-editor-container" style="display: none;">
+      <div class="notes-editor">
+        <textarea class="notes-textarea" data-bookmark-id="${bookmarkId}" placeholder="Add a note...">${notes}</textarea>
+      </div>
     </div>
   `;
 
@@ -439,15 +443,30 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const editNoteBtn = div.querySelector('.edit-note-btn');
-    const notesEditor = div.querySelector('.notes-editor');
+    const notesEditorContainer = div.querySelector('.notes-editor-container');
     const notesTextarea = div.querySelector('.notes-textarea');
-    
+    const notePreview = div.querySelector('.note-preview');
+
+    function updateNotePreview() {
+      const currentNotes = notesTextarea.value.trim();
+      if (currentNotes) {
+        notePreview.textContent = currentNotes;
+        notePreview.style.display = 'block';
+        editNoteBtn.title = 'Edit Note';
+      } else {
+        notePreview.textContent = '';
+        notePreview.style.display = 'none';
+        editNoteBtn.title = 'Add Note';
+      }
+    }
+
+    updateNotePreview();
 
     editNoteBtn.addEventListener('click', (e) => {
       e.stopPropagation();
       e.preventDefault();
-      const isEditing = notesEditor.style.display === 'block';
-      notesEditor.style.display = isEditing ? 'none' : 'block';
+      const isEditing = notesEditorContainer.style.display === 'block';
+      notesEditorContainer.style.display = isEditing ? 'none' : 'block';
       if (!isEditing) {
         notesTextarea.focus();
       }
@@ -466,6 +485,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showNotification('Note saved', 'success', notificationArea);
           }
         }
+        updateNotePreview();
       } catch (error) {
         console.error('Failed to save notes:', error);
         showNotification('Failed to save note', 'error', notificationArea);
@@ -477,7 +497,7 @@ document.addEventListener('DOMContentLoaded', () => {
     notesTextarea.addEventListener('blur', () => {
       setTimeout(() => {
         if (document.activeElement !== editNoteBtn) {
-          notesEditor.style.display = 'none';
+          notesEditorContainer.style.display = 'none';
           if (saveNotes.flush) saveNotes.flush();
         }
       }, 150);
