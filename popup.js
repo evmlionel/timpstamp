@@ -1,4 +1,4 @@
-import { debounce, formatTime, showNotification } from './src/utils.js';
+import { debounce, formatTime, showNotification, setupLazyLoading } from './src/utils.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const bookmarksList = document.getElementById('bookmarksList');
@@ -29,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const ITEMS_PER_PAGE = 50; // Show 50 bookmarks at a time
   let currentPage = 0;
   let isLoading = false;
+  const lazyObserver = setupLazyLoading();
 
   async function loadAllData() {
     try {
@@ -490,7 +491,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <a href="${bookmark.url}" target="_blank" class="bookmark-link">
         <div class="bookmark-card-inner">
           <div class="thumbnail-container">
-            <img class="thumbnail" src="${thumbnailUrl}" alt="Video thumbnail"/>
+            <img class="thumbnail" data-src="${thumbnailUrl}" alt="Video thumbnail"/>
             <div class="thumbnail-placeholder"></div>
             <div class="timestamp-badge">${formatTime(bookmark.timestamp)}</div>
           </div>
@@ -519,6 +520,8 @@ document.addEventListener('DOMContentLoaded', () => {
       thumbnailImg.style.display = 'none';
       thumbnailPlaceholder.style.display = 'block';
     };
+    // Observe for lazy loading
+    try { lazyObserver.observe(thumbnailImg); } catch {}
 
     const stopPropagation = (e) => e.stopPropagation();
 

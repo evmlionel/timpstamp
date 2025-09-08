@@ -1,6 +1,6 @@
 // Constants for storage
 const BOOKMARKS_KEY = 'timpstamp_bookmarks'; // Single key for all bookmarks
-const SETTINGS_KEYS = ['shortcutEnabled', 'darkModeEnabled'];
+const SETTINGS_KEYS = ['shortcutEnabled', 'darkModeEnabled', 'multiTimestamps'];
 
 // Initialize storage
 chrome.runtime.onInstalled.addListener(() => {
@@ -36,17 +36,10 @@ chrome.runtime.onInstalled.addListener(() => {
     }
   })();
 
-  // Create a lightweight alarm; note service workers are event-driven
-  chrome.alarms.create('keepAlive', { periodInMinutes: 30 });
+  // No keepAlive alarm; rely on MV3 event-driven lifecycle
 });
 
-// Listener for the alarm
-chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === 'keepAlive') {
-    // No-op read to keep things warm, but not required
-    chrome.storage.local.get(null, () => {});
-  }
-});
+// No keepAlive; MV3 is event-driven.
 
 // Handle messages from content script
 chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
@@ -176,15 +169,19 @@ async function handleAddBookmark(bookmarkData, sendResponse) {
     return;
   }
 
-  const videoIdForBookmark = bookmarkData.videoId; // Use videoId as the unique identifier
+  const videoIdForBookmark = bookmarkData.videoId;
 
   try {
     const bookmarks = await getAllBookmarks();
+    // Determine multi-timestamp behavior
+    const setting = await chrome.storage.local.get('multiTimestamps');
+    const multi = setting.multiTimestamps !== false; // default true
 
-    // Check if a bookmark for this videoId already exists
-    const existingBookmarkIndex = bookmarks.findIndex(
-      (b) => b.id === videoIdForBookmark // Assuming 'id' will now store just the videoId
-    );
+    // Compute ID based on mode
+    const computedId = multi
+      ? `${videoIdForBookmark}:${bookmarkData.timestamp}`
+      : videoIdForBookmark;
+    const existingBookmarkIndex = bookmarks.findIndex((b) => b.id === computedId);
 
     if (existingBookmarkIndex !== -1) {
       // Update existing bookmark
@@ -199,12 +196,12 @@ async function handleAddBookmark(bookmarkData, sendResponse) {
         videoId: bookmarkData.videoId,
         savedAt: Date.now(), // Update the savedAt/updatedAt timestamp
       };
-      // The 'id' field is already videoIdForBookmark due to the findIndex and preservation logic
+      // id preserved
     } else {
       // Add new bookmark
       const newBookmark = {
         ...bookmarkData, // Contains videoId, videoTitle, timestamp, formattedTime, url
-        id: videoIdForBookmark, // Set id to videoId
+        id: computedId,
         createdAt: Date.now(), // Timestamp for when it was first bookmarked
         savedAt: Date.now(), // Timestamp for this specific save/update
         notes: '', // Initialize notes
@@ -221,6 +218,8 @@ async function handleAddBookmark(bookmarkData, sendResponse) {
         message:
           existingBookmarkIndex !== -1
             ? 'Timestamp updated! 🎉'
+            : multi
+            ? 'Timestamp added! 🎉'
             : 'Timestamp saved! 🎉',
       });
     } catch (saveError) {

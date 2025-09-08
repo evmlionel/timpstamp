@@ -1,0 +1,52 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Timestamp Bookmarker Options</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main class="container">
+      <h1>Settings</h1>
+
+      <section class="card">
+        <h2>General</h2>
+        <label class="row">
+          <input type="checkbox" id="shortcutEnabled" />
+          <span>Enable keyboard shortcut (B)</span>
+        </label>
+        <label class="row">
+          <input type="checkbox" id="darkModeEnabled" />
+          <span>Enable dark mode in popup</span>
+        </label>
+      </section>
+
+      <section class="card">
+        <h2>Bookmarks</h2>
+        <label class="row">
+          <input type="checkbox" id="multiTimestamps" />
+          <span>Allow multiple timestamps per video</span>
+        </label>
+      </section>
+
+      <section class="card">
+        <h2>Storage</h2>
+        <label class="row">
+          <span>Backend</span>
+          <select id="backend" disabled>
+            <option value="local" selected>Local (default)</option>
+            <option value="idb" disabled>IndexedDB (coming soon)</option>
+          </select>
+        </label>
+      </section>
+
+      <div class="footer">
+        <span id="status"></span>
+        <button id="saveBtn" class="primary">Save</button>
+      </div>
+    </main>
+
+    <script src="options.js" type="module"></script>
+  </body>
+  </html>
+
