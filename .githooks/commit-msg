@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Normalize commit messages written with literal "\n" sequences
+# Converts the two-character sequence backslash+n into actual newlines.
+# Keeps the rest of the message intact. Safe to run multiple times.
+
+set -euo pipefail
+msgfile="$1"
+
+tmpfile="$(mktemp)"
+# Use perl for robust multi-line replacement
+perl -0777 -pe 's/\\n/\n/g' "$msgfile" > "$tmpfile"
+
+if ! cmp -s "$msgfile" "$tmpfile"; then
+  mv "$tmpfile" "$msgfile"
+else
+  rm -f "$tmpfile"
+fi
+
+exit 0
+
