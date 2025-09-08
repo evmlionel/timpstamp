@@ -1,5 +1,6 @@
 let currentVideoId = null;
 let shortcutEnabled = true; // Default to enabled, will be updated from storage
+let cachedVideoTimestamps = [];
 
 // Enhanced video element detection with multiple fallbacks
 function findVideoElement() {
@@ -146,6 +147,23 @@ function extractVideoTitle() {
   return 'Unknown Title';
 }
 
+// Extract channel name
+function extractChannelTitle() {
+  const selectors = [
+    'ytd-channel-name a',
+    'ytd-video-owner-renderer a',
+    'a.yt-simple-endpoint.yt-formatted-string',
+  ];
+  for (const s of selectors) {
+    try {
+      const el = document.querySelector(s);
+      const t = el?.textContent?.trim();
+      if (t) return t;
+    } catch {}
+  }
+  return '';
+}
+
 // Function to load initial shortcut setting
 function loadShortcutSetting() {
   chrome.storage.local.get('shortcutEnabled', (result) => {
@@ -196,6 +214,7 @@ function saveTimestamp(retryCount = 0) {
 
     // Enhanced title extraction with multiple selectors and fallbacks
     const videoTitle = extractVideoTitle();
+    const channelTitle = extractChannelTitle();
 
     const formattedTime =
       hours > 0
@@ -207,6 +226,7 @@ function saveTimestamp(retryCount = 0) {
     const bookmark = {
       videoId,
       videoTitle: videoTitle,
+      channelTitle: channelTitle,
       timestamp: currentTime,
       formattedTime,
       url: `https://youtube.com/watch?v=${videoId}&t=${currentTime}s`,
@@ -251,6 +271,81 @@ function saveTimestamp(retryCount = 0) {
     }
     showNotification('Unexpected error. Please refresh the page.');
   }
+}
+
+function fmt(seconds) {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = Math.floor(seconds % 60);
+  return h > 0
+    ? `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+    : `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function renderOverlay() {
+  try {
+    // remove old
+    document.querySelector('.ytb-overlay-panel')?.remove();
+    if (!currentVideoId) return;
+    if (!Array.isArray(cachedVideoTimestamps) || cachedVideoTimestamps.length === 0) return;
+
+    const panel = document.createElement('div');
+    panel.className = 'ytb-overlay-panel';
+    panel.innerHTML = `
+      <div class="ytb-overlay-header">
+        <span>Timestamps (${cachedVideoTimestamps.length})</span>
+        <button class="ytb-overlay-close" aria-label="Close">✕</button>
+      </div>
+      <div class="ytb-overlay-list"></div>
+      <div style="font-size:11px;opacity:.7;margin-top:4px;">Alt+[ / Alt+] to navigate</div>
+    `;
+    const list = panel.querySelector('.ytb-overlay-list');
+
+    cachedVideoTimestamps
+      .slice()
+      .sort((a, b) => a.timestamp - b.timestamp)
+      .forEach((b) => {
+        const row = document.createElement('div');
+        row.className = 'ytb-overlay-item';
+        row.innerHTML = `
+          <span>${fmt(b.timestamp)}</span>
+          <div>
+            <button class="jump" data-t="${b.timestamp}">Jump</button>
+            <button class="del" data-id="${b.id}">Del</button>
+          </div>
+        `;
+        list.appendChild(row);
+      });
+
+    panel.querySelector('.ytb-overlay-close')?.addEventListener('click', () => panel.remove());
+
+    panel.addEventListener('click', (e) => {
+      const target = e.target;
+      if (!(target instanceof Element)) return;
+      if (target.classList.contains('jump')) {
+        const t = Number(target.getAttribute('data-t'));
+        const video = findVideoElement();
+        if (video && !Number.isNaN(t)) video.currentTime = t;
+      } else if (target.classList.contains('del')) {
+        const id = target.getAttribute('data-id');
+        chrome.runtime.sendMessage({ type: 'DELETE_BOOKMARK', bookmarkId: id }, () => {
+          loadVideoTimestamps();
+        });
+      }
+    });
+
+    document.body.appendChild(panel);
+  } catch {}
+}
+
+async function loadVideoTimestamps() {
+  try {
+    if (!currentVideoId) return;
+    const res = await chrome.storage.local.get('timpstamp_bookmarks');
+    const all = res.timpstamp_bookmarks || [];
+    cachedVideoTimestamps = all.filter((b) => b.videoId === currentVideoId);
+    renderOverlay();
+  } catch {}
 }
 
 // Announce message to screen readers
@@ -535,5 +630,54 @@ try {
   document.addEventListener('keydown', handleKeyPress, true);
   window.addEventListener('yt-navigate-finish', initialize);
   window.addEventListener('load', initialize);
+  chrome.storage.onChanged.addListener((changes, ns) => {
+    if (ns === 'local' && (changes.timpstamp_bookmarks || changes.multiTimestamps)) {
+      loadVideoTimestamps();
+    }
+  });
+  // Load initial overlay data
+  loadVideoTimestamps();
+
+  // Alt+[ / Alt+] navigation across saved timestamps
+  document.addEventListener('keydown', (e) => {
+    try {
+      if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) return;
+      if (e.key !== '[' && e.key !== ']') return;
+
+      const video = findVideoElement();
+      if (!video || !currentVideoId) return;
+      const now = Math.floor(video.currentTime || 0);
+      const times = (cachedVideoTimestamps || [])
+        .map((b) => b.timestamp)
+        .sort((a, b) => a - b);
+      if (times.length === 0) return;
+
+      if (e.key === '[') {
+        // prev
+        let prev = null;
+        for (const t of times) {
+          if (t < now) prev = t;
+          else break;
+        }
+        if (prev != null) {
+          video.currentTime = prev;
+          showNotification(`Jumped to ${fmt(prev)}`);
+          e.preventDefault();
+        }
+      } else if (e.key === ']') {
+        // next
+        let next = null;
+        for (const t of times) {
+          if (t > now) { next = t; break; }
+        }
+        if (next != null) {
+          video.currentTime = next;
+          showNotification(`Jumped to ${fmt(next)}`);
+          e.preventDefault();
+        }
+      }
+    } catch {}
+  }, true);
   initialize();
 } catch (_error) {}

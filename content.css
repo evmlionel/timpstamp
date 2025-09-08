@@ -38,3 +38,28 @@
   opacity: 0;
 }
 */
+/* Overlay panel for per-video timestamps */
+.ytb-overlay-panel {
+  position: fixed;
+  right: 16px;
+  bottom: 80px;
+  background: rgba(0,0,0,0.85);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 6px;
+  padding: 8px;
+  z-index: 10000;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  width: 240px;
+}
+.ytb-overlay-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+.ytb-overlay-list { max-height: 240px; overflow-y: auto; }
+.ytb-overlay-item { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 13px; }
+.ytb-overlay-item button { background: transparent; color: #fff; border: none; cursor: pointer; opacity: 0.8; }
+.ytb-overlay-item button:hover { opacity: 1; }

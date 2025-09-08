@@ -200,6 +200,7 @@ async function handleAddBookmark(bookmarkData, sendResponse) {
         ...existing,
         videoId: bookmarkData.videoId,
         videoTitle: bookmarkData.videoTitle,
+        channelTitle: bookmarkData.channelTitle || existing.channelTitle,
         timestamp: bookmarkData.timestamp,
         savedAt: Date.now(),
       };
@@ -209,6 +210,7 @@ async function handleAddBookmark(bookmarkData, sendResponse) {
         id: computedId,
         videoId: bookmarkData.videoId,
         videoTitle: bookmarkData.videoTitle,
+        channelTitle: bookmarkData.channelTitle || '',
         timestamp: bookmarkData.timestamp,
         createdAt: Date.now(),
         savedAt: Date.now(),

@@ -387,12 +387,48 @@ document.addEventListener('DOMContentLoaded', () => {
       emptyState.style.display = 'none';
     }
 
-    // Render initial page
-    renderBookmarkPage();
+    // Group by videoId
+    const groups = new Map();
+    for (const b of filteredBookmarks) {
+      const g = groups.get(b.videoId) || { videoTitle: b.videoTitle, channelTitle: b.channelTitle || '', items: [] };
+      g.items.push(b);
+      groups.set(b.videoId, g);
+    }
+    // Sort groups by newest savedAt
+    const ordered = [...groups.entries()].sort(([, A], [, B]) => {
+      const aMax = Math.max(...A.items.map((x) => x.savedAt || x.createdAt || 0));
+      const bMax = Math.max(...B.items.map((x) => x.savedAt || x.createdAt || 0));
+      return bMax - aMax;
+    });
 
-    // Set up infinite scroll for large collections
-    if (filteredBookmarks.length > ITEMS_PER_PAGE) {
-      setupInfiniteScroll();
+    // Render groups
+    for (const [vid, g] of ordered) {
+      const card = document.createElement('div');
+      card.className = 'group-card';
+      card.innerHTML = `
+        <div class="group-header" data-video-id="${vid}">
+          <div class="group-title">
+            <div class="video" title="${g.videoTitle}">${g.videoTitle}</div>
+            <div class="channel">${g.channelTitle || ''}</div>
+          </div>
+          <div>(${g.items.length})</div>
+        </div>
+        <div class="group-body" style="display:none;"></div>
+      `;
+      const body = card.querySelector('.group-body');
+      // sort timestamps ascending
+      g.items.sort((a, b) => a.timestamp - b.timestamp);
+      g.items.forEach((bookmark) => {
+        const el = createBookmarkElement(bookmark);
+        body.appendChild(el);
+      });
+      const header = card.querySelector('.group-header');
+      header.addEventListener('click', () => {
+        const open = body.style.display !== 'none';
+        body.style.display = open ? 'none' : 'block';
+      });
+      if (g.items.length <= 3) body.style.display = 'block';
+      bookmarksList.appendChild(card);
     }
   }
 
@@ -527,6 +563,7 @@ document.addEventListener('DOMContentLoaded', () => {
               </button>
           </div>
       </div>
+      <input class="tag-input" type="text" placeholder="tags (comma-separated)" value="${(bookmark.tags || []).join(', ')}" data-bookmark-id="${bookmarkId}" />
     </div>
   `;
 
@@ -732,6 +769,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const bookmarkId = e.target.dataset.bookmarkId;
         const newNotes = e.target.value;
         await saveNoteToBookmark(bookmarkId, newNotes);
+      } else if (e.target?.classList.contains('tag-input')) {
+        const bookmarkId = e.target.dataset.bookmarkId;
+        const raw = e.target.value || '';
+        const tags = raw
+          .split(',')
+          .map((t) => t.trim().toLowerCase())
+          .filter(Boolean);
+        await saveTagsToBookmark(bookmarkId, tags);
       }
     }, 500) // Adjust debounce time as needed
   );
@@ -745,6 +790,18 @@ document.addEventListener('DOMContentLoaded', () => {
     bookmarks[i].favorite = newValue;
     await chrome.storage.local.set({ timpstamp_bookmarks: bookmarks });
     return newValue;
+  }
+
+  async function saveTagsToBookmark(bookmarkId, tags) {
+    try {
+      const result = await chrome.storage.local.get('timpstamp_bookmarks');
+      const bookmarks = result.timpstamp_bookmarks || [];
+      const i = bookmarks.findIndex((b) => b.id === bookmarkId);
+      if (i !== -1) {
+        bookmarks[i].tags = tags;
+        await chrome.storage.local.set({ timpstamp_bookmarks: bookmarks });
+      }
+    } catch (_e) {}
   }
 
   // Keyboard Navigation
