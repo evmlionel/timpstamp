@@ -40,9 +40,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const settingResult = await chrome.storage.local.get([
         'shortcutEnabled',
         'darkModeEnabled',
+        'pinnedVideos',
       ]);
       shortcutToggle.checked = settingResult.shortcutEnabled !== false;
       darkModeToggle.checked = settingResult.darkModeEnabled || false;
+      pinnedVideos = new Set(settingResult.pinnedVideos || []);
 
       // Apply dark mode if enabled
       applyTheme(darkModeToggle.checked);
@@ -73,6 +75,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   loadAllData();
+
+  // Refresh live when storage changes (e.g., after pressing B on YouTube)
+  chrome.storage.onChanged.addListener((changes, ns) => {
+    if (ns === 'local' && changes.timpstamp_bookmarks) {
+      loadAllData();
+    }
+  });
 
   shortcutToggle.addEventListener('change', (e) => {
     chrome.storage.local.set({ shortcutEnabled: e.target.checked });
