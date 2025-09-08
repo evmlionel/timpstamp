@@ -94,7 +94,16 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   optionsBtn.addEventListener('click', () => {
-    if (chrome.runtime.openOptionsPage) chrome.runtime.openOptionsPage();
+    if (chrome.runtime.openOptionsPage) {
+      chrome.runtime.openOptionsPage().catch(() => {
+        const url = chrome.runtime.getURL('options.html');
+        // Fallback without requiring tabs permission
+        window.open(url, '_blank');
+      });
+    } else {
+      const url = chrome.runtime.getURL('options.html');
+      window.open(url, '_blank');
+    }
   });
 
   favoritesFilterBtn.addEventListener('click', () => {
