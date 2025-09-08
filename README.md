@@ -2,6 +2,13 @@
 
 A Chrome extension that enhances your YouTube watching experience by letting you save and manage video timestamps with ease. Perfect for students, researchers, content creators, or anyone who needs to reference specific moments in YouTube videos.
 
+## 🔄 Changelog
+
+v1.1
+- Switched storage from `chrome.storage.sync` to `chrome.storage.local` to avoid strict sync quotas and enable thousands of bookmarks.
+- One‑time migration copies existing sync data to local on update.
+- Minor robustness improvements to background worker.
+
 ## ✨ Features
 
 - 🎯 **Quick Bookmark Button**: Integrated bookmark button in YouTube's video player controls

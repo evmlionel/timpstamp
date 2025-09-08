@@ -1,36 +1,50 @@
 // Constants for storage
 const BOOKMARKS_KEY = 'timpstamp_bookmarks'; // Single key for all bookmarks
+const SETTINGS_KEYS = ['shortcutEnabled', 'darkModeEnabled'];
 
 // Initialize storage
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.storage.sync.get([BOOKMARKS_KEY, 'shortcutEnabled'], (result) => {
-    if (!result[BOOKMARKS_KEY]) {
-      // Initialize with an empty array of bookmarks
-      chrome.storage.sync.set(
-        {
-          [BOOKMARKS_KEY]: [], // Empty array - no bookmarks initially
-        },
-        () => {}
-      );
+  // One-time migration from sync -> local
+  (async () => {
+    try {
+      const [syncData, localData] = await Promise.all([
+        chrome.storage.sync.get([BOOKMARKS_KEY, ...SETTINGS_KEYS]),
+        chrome.storage.local.get([BOOKMARKS_KEY, ...SETTINGS_KEYS]),
+      ]);
+
+      const toSetLocal = {};
+      // Migrate bookmarks if local is empty but sync has data
+      if (!localData[BOOKMARKS_KEY] && Array.isArray(syncData[BOOKMARKS_KEY])) {
+        toSetLocal[BOOKMARKS_KEY] = syncData[BOOKMARKS_KEY];
+      }
+      // Migrate settings if absent locally
+      for (const key of SETTINGS_KEYS) {
+        if (typeof localData[key] === 'undefined' && typeof syncData[key] !== 'undefined') {
+          toSetLocal[key] = syncData[key];
+        }
+      }
+      // Ensure defaults
+      if (typeof toSetLocal.shortcutEnabled === 'undefined' && typeof localData.shortcutEnabled === 'undefined') {
+        toSetLocal.shortcutEnabled = true;
+      }
+      if (Object.keys(toSetLocal).length > 0) {
+        await chrome.storage.local.set(toSetLocal);
+      }
+    } catch (_e) {
+      // Best-effort migration only
+      await chrome.storage.local.set({ shortcutEnabled: true });
     }
-    // Ensure shortcutEnabled has a default value (true)
-    if (typeof result.shortcutEnabled === 'undefined') {
-      chrome.storage.sync.set({ shortcutEnabled: true }, () => {});
-    }
-  });
-  // Create the alarm when the extension is installed or updated
-  chrome.alarms.create('keepAlive', { periodInMinutes: 0.5 }); // Run every 30 seconds
+  })();
+
+  // Create a lightweight alarm; note service workers are event-driven
+  chrome.alarms.create('keepAlive', { periodInMinutes: 30 });
 });
 
 // Listener for the alarm
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === 'keepAlive') {
-    // Perform a minimal operation to keep the service worker alive, e.g., check storage
-    chrome.storage.sync.get(null, (_items) => {
-      if (chrome.runtime.lastError) {
-        // Handle error silently - keep-alive check failed
-      }
-    });
+    // No-op read to keep things warm, but not required
+    chrome.storage.local.get(null, () => {});
   }
 });
 
@@ -55,7 +69,7 @@ async function getAllBookmarks(maxRetries = 3) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
       // Get bookmarks directly
-      const result = await chrome.storage.sync.get(BOOKMARKS_KEY);
+      const result = await chrome.storage.local.get(BOOKMARKS_KEY);
       const bookmarks = result[BOOKMARKS_KEY] || [];
 
       // Validate bookmark data structure
@@ -76,11 +90,8 @@ async function getAllBookmarks(maxRetries = 3) {
       });
 
       // If some bookmarks were invalid, save the cleaned version
-      if (
-        validBookmarks.length !== bookmarks.length &&
-        validBookmarks.length > 0
-      ) {
-        await chrome.storage.sync.set({ [BOOKMARKS_KEY]: validBookmarks });
+      if (validBookmarks.length !== bookmarks.length && validBookmarks.length >= 0) {
+        await chrome.storage.local.set({ [BOOKMARKS_KEY]: validBookmarks });
       }
 
       return validBookmarks;
@@ -99,33 +110,27 @@ async function getAllBookmarks(maxRetries = 3) {
 
 // Helper function to check storage quota and clean up if needed
 async function checkAndCleanupStorage(bookmarks) {
-  const bytesInUse = await chrome.storage.sync.getBytesInUse();
-  const maxBytes = chrome.storage.sync.QUOTA_BYTES || 102400; // 100KB default
-  const bookmarksSize = JSON.stringify(bookmarks).length;
-  const totalSize = bytesInUse + bookmarksSize;
-  const quotaThreshold = maxBytes * 0.85;
-
-  if (totalSize <= quotaThreshold) {
-    return bookmarks;
-  }
-
-  if (bookmarks.length > 50) {
-    const cleanedBookmarks = await cleanupOldBookmarks(bookmarks);
-    const cleanedSize = JSON.stringify(cleanedBookmarks).length;
-
-    if (bytesInUse + cleanedSize <= quotaThreshold) {
-      return cleanedBookmarks;
+  // Using chrome.storage.local with ~5MB quota; keep a soft headroom check
+  try {
+    const bytesInUse = await chrome.storage.local.getBytesInUse();
+    const maxBytes = chrome.storage.local.QUOTA_BYTES || 5 * 1024 * 1024;
+    const estimated = bytesInUse + JSON.stringify({ [BOOKMARKS_KEY]: bookmarks }).length;
+    if (estimated > maxBytes * 0.95) {
+      // Soft warning by trimming only if absolutely necessary: keep most recent 500
+      const trimmed = [...bookmarks]
+        .sort((a, b) => (b.savedAt || b.createdAt || 0) - (a.savedAt || a.createdAt || 0))
+        .slice(0, 500);
+      return trimmed;
     }
+  } catch (_e) {
+    // Ignore quota check errors; proceed to save
   }
-
-  throw new Error(
-    `Storage quota exceeded. Current: ${bytesInUse}B, Required: ${bookmarksSize}B, Max: ${maxBytes}B. Consider exporting and deleting old bookmarks.`
-  );
+  return bookmarks;
 }
 
 // Helper function to verify storage operation
 async function verifyStorageOperation(bookmarks) {
-  const verification = await chrome.storage.sync.get(BOOKMARKS_KEY);
+  const verification = await chrome.storage.local.get(BOOKMARKS_KEY);
   if (
     !verification[BOOKMARKS_KEY] ||
     verification[BOOKMARKS_KEY].length !== bookmarks.length
@@ -142,7 +147,7 @@ async function saveAllBookmarks(bookmarks, maxRetries = 3) {
       const processedBookmarks = await checkAndCleanupStorage(bookmarks);
 
       // Save bookmarks directly
-      await chrome.storage.sync.set({ [BOOKMARKS_KEY]: processedBookmarks });
+      await chrome.storage.local.set({ [BOOKMARKS_KEY]: processedBookmarks });
 
       // Verify the save was successful
       await verifyStorageOperation(processedBookmarks);

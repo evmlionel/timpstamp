@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "YouTube Timestamp Bookmarker",
-  "version": "1.0",
+  "version": "1.1",
   "description": "Save and manage YouTube video timestamps with ease",
   "permissions": ["storage", "activeTab", "alarms"],
   "host_permissions": ["*://*.youtube.com/*"],

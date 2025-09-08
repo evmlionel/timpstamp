@@ -148,14 +148,14 @@ function extractVideoTitle() {
 
 // Function to load initial shortcut setting
 function loadShortcutSetting() {
-  chrome.storage.sync.get('shortcutEnabled', (result) => {
+  chrome.storage.local.get('shortcutEnabled', (result) => {
     shortcutEnabled = result.shortcutEnabled !== false; // Default true if undefined
   });
 }
 
 // Listen for changes in storage (e.g., when changed via popup)
 chrome.storage.onChanged.addListener((changes, namespace) => {
-  if (namespace === 'sync' && changes.shortcutEnabled) {
+  if (namespace === 'local' && changes.shortcutEnabled) {
     shortcutEnabled = changes.shortcutEnabled.newValue !== false;
   }
 });

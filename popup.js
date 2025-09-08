@@ -33,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function loadAllData() {
     try {
       // Get settings
-      const settingResult = await chrome.storage.sync.get([
+      const settingResult = await chrome.storage.local.get([
         'shortcutEnabled',
         'darkModeEnabled',
       ]);
@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
       applyTheme(darkModeToggle.checked);
 
       // Get bookmarks using the new direct storage approach
-      const result = await chrome.storage.sync.get('timpstamp_bookmarks');
+      const result = await chrome.storage.local.get('timpstamp_bookmarks');
       const bookmarks = result.timpstamp_bookmarks || [];
 
       // Store bookmarks in global variable
@@ -71,12 +71,12 @@ document.addEventListener('DOMContentLoaded', () => {
   loadAllData();
 
   shortcutToggle.addEventListener('change', (e) => {
-    chrome.storage.sync.set({ shortcutEnabled: e.target.checked });
+    chrome.storage.local.set({ shortcutEnabled: e.target.checked });
   });
 
   darkModeToggle.addEventListener('change', (e) => {
     const isDark = e.target.checked;
-    chrome.storage.sync.set({ darkModeEnabled: isDark });
+    chrome.storage.local.set({ darkModeEnabled: isDark });
     applyTheme(isDark);
   });
 
@@ -99,7 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function exportBookmarks() {
     try {
-      const result = await chrome.storage.sync.get('timpstamp_bookmarks');
+      const result = await chrome.storage.local.get('timpstamp_bookmarks');
       const bookmarks = result.timpstamp_bookmarks || [];
 
       if (bookmarks.length === 0) {
@@ -146,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // Get existing bookmarks
-      const result = await chrome.storage.sync.get('timpstamp_bookmarks');
+      const result = await chrome.storage.local.get('timpstamp_bookmarks');
       const existingBookmarks = result.timpstamp_bookmarks || [];
 
       // Merge bookmarks, avoiding duplicates by video ID
@@ -163,7 +163,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       const mergedBookmarks = [...existingBookmarks, ...newBookmarks];
-      await chrome.storage.sync.set({ timpstamp_bookmarks: mergedBookmarks });
+      await chrome.storage.local.set({ timpstamp_bookmarks: mergedBookmarks });
 
       // Refresh UI
       loadAllData();
@@ -295,13 +295,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     try {
-      const result = await chrome.storage.sync.get('timpstamp_bookmarks');
+      const result = await chrome.storage.local.get('timpstamp_bookmarks');
       const bookmarks = result.timpstamp_bookmarks || [];
       const updatedBookmarks = bookmarks.filter(
         (b) => !selectedBookmarks.has(b.id)
       );
 
-      await chrome.storage.sync.set({ timpstamp_bookmarks: updatedBookmarks });
+      await chrome.storage.local.set({ timpstamp_bookmarks: updatedBookmarks });
 
       selectedBookmarks.clear();
       loadAllData();
@@ -630,7 +630,7 @@ document.addEventListener('DOMContentLoaded', () => {
   async function deleteBookmarkFromStorage(bookmarkId) {
     let deletedBookmark = null; // To store the data of the bookmark being deleted
     try {
-      const result = await chrome.storage.sync.get('timpstamp_bookmarks');
+      const result = await chrome.storage.local.get('timpstamp_bookmarks');
       let bookmarks = result.timpstamp_bookmarks || [];
 
       // Find the bookmark first to return its data
@@ -639,7 +639,7 @@ document.addEventListener('DOMContentLoaded', () => {
       bookmarks = bookmarks.filter((b) => b.id !== bookmarkId);
       const _finalLength = bookmarks.length;
 
-      await chrome.storage.sync.set({ timpstamp_bookmarks: bookmarks });
+      await chrome.storage.local.set({ timpstamp_bookmarks: bookmarks });
       showNotification('Bookmark deleted.', 'success', notificationArea);
       return deletedBookmark;
     } catch (_error) {
@@ -651,7 +651,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Function to restore a bookmark
   async function restoreBookmark(bookmarkToRestore) {
     try {
-      const result = await chrome.storage.sync.get('timpstamp_bookmarks');
+      const result = await chrome.storage.local.get('timpstamp_bookmarks');
       const bookmarks = result.timpstamp_bookmarks || [];
 
       // Optional: Check if it somehow already exists (e.g., rapid undo/redo?) to avoid duplicates
@@ -661,7 +661,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       bookmarks.push(bookmarkToRestore);
 
-      await chrome.storage.sync.set({ timpstamp_bookmarks: bookmarks });
+      await chrome.storage.local.set({ timpstamp_bookmarks: bookmarks });
       showNotification('Bookmark restored.', 'success', notificationArea);
       return true; // Indicate success
     } catch (_error) {
@@ -676,13 +676,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function saveNoteToBookmark(bookmarkId, noteText) {
     try {
-      const result = await chrome.storage.sync.get('timpstamp_bookmarks');
+      const result = await chrome.storage.local.get('timpstamp_bookmarks');
       const bookmarks = result.timpstamp_bookmarks || [];
       const bookmarkIndex = bookmarks.findIndex((b) => b.id === bookmarkId);
 
       if (bookmarkIndex !== -1) {
         bookmarks[bookmarkIndex].notes = noteText;
-        await chrome.storage.sync.set({ timpstamp_bookmarks: bookmarks });
+        await chrome.storage.local.set({ timpstamp_bookmarks: bookmarks });
         // Optional: show success notification, maybe debounced
         showNotification('Note saved.', 'success', notificationArea);
       }

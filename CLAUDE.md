@@ -69,7 +69,7 @@ The extension uses a three-way communication pattern:
 ### Key Components
 
 #### Storage Architecture
-- Uses Chrome's `chrome.storage.sync` API
+- Uses Chrome's `chrome.storage.local` API (migrates from sync on install)
 - Single storage key: `timpstamp_bookmarks` contains an array of all bookmarks
 - Each bookmark has structure: `{id, videoId, videoTitle, timestamp, formattedTime, url, createdAt, savedAt, notes}`
 - Bookmark ID is the YouTube video ID for uniqueness
@@ -85,7 +85,7 @@ The extension uses a three-way communication pattern:
 
 #### Background Service Worker (`background.js`)
 - Handles all storage operations (add, delete, clear all bookmarks)
-- Implements keep-alive mechanism using `chrome.alarms` API (every 30 seconds)
+- Best-effort keep-alive using `chrome.alarms` (event-driven in MV3)
 - Message-based communication with content script and popup
 - Centralizes bookmark CRUD operations to prevent data corruption
 - Storage key constant: `BOOKMARKS_KEY = 'timpstamp_bookmarks'`
