@@ -61,6 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const selectedBookmarks = new Set();
   let favoritesOnly = false;
   let pinnedVideos = new Set();
+  let expandedGroups = new Set();
 
   // Performance optimization variables
   const ITEMS_PER_PAGE = 50; // Show 50 bookmarks at a time
@@ -75,13 +76,16 @@ document.addEventListener('DOMContentLoaded', () => {
         'shortcutEnabled',
         'darkModeEnabled',
         'pinnedVideos',
+        'expandedGroups',
       ]);
-      shortcutToggle.checked = settingResult.shortcutEnabled !== false;
-      darkModeToggle.checked = settingResult.darkModeEnabled || false;
+      if (shortcutToggle) shortcutToggle.checked = settingResult.shortcutEnabled !== false;
+      const darkValue = settingResult.darkModeEnabled || false;
+      if (darkModeToggle) darkModeToggle.checked = darkValue;
+      applyTheme(darkValue);
       pinnedVideos = new Set(settingResult.pinnedVideos || []);
+      expandedGroups = new Set(settingResult.expandedGroups || []);
 
-      // Apply dark mode if enabled
-      applyTheme(darkModeToggle.checked);
+      // Apply theme (handled above)
 
       // Get bookmarks using the new direct storage approach
       const result = await storageGet('timpstamp_bookmarks');
@@ -117,15 +121,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  shortcutToggle.addEventListener('change', (e) => {
-    chrome.storage.local.set({ shortcutEnabled: e.target.checked });
-  });
+  if (shortcutToggle) {
+    shortcutToggle.addEventListener('change', (e) => {
+      chrome.storage.local.set({ shortcutEnabled: e.target.checked });
+    });
+  }
 
-  darkModeToggle.addEventListener('change', (e) => {
-    const isDark = e.target.checked;
-    chrome.storage.local.set({ darkModeEnabled: isDark });
-    applyTheme(isDark);
-  });
+  if (darkModeToggle) {
+    darkModeToggle.addEventListener('change', (e) => {
+      const isDark = e.target.checked;
+      chrome.storage.local.set({ darkModeEnabled: isDark });
+      applyTheme(isDark);
+    });
+  }
 
   optionsBtn.addEventListener('click', () => {
     if (chrome.runtime.openOptionsPage) {
@@ -484,10 +492,17 @@ document.addEventListener('DOMContentLoaded', () => {
         body.appendChild(el);
       });
       const header = card.querySelector('.group-header');
-      header.addEventListener('click', (e) => {
+      header.addEventListener('click', async (e) => {
         if (e.target && e.target.classList.contains('pin-btn')) return;
         const open = body.style.display !== 'none';
         body.style.display = open ? 'none' : 'block';
+        // persist expanded state
+        if (open) {
+          expandedGroups.delete(vid);
+        } else {
+          expandedGroups.add(vid);
+        }
+        try { await storageSet({ expandedGroups: [...expandedGroups] }); } catch {}
       });
       const pinBtn = card.querySelector('.pin-btn');
       pinBtn.addEventListener('click', async (e) => {
@@ -500,7 +515,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Re-render to reflect pin ordering
         sortAndRenderBookmarks();
       });
-      if (g.items.length <= 3) body.style.display = 'block';
+      if (g.items.length <= 3 || expandedGroups.has(vid)) body.style.display = 'block';
       bookmarksList.appendChild(card);
     }
   }
@@ -613,7 +628,7 @@ document.addEventListener('DOMContentLoaded', () => {
       <a href="https://youtube.com/watch?v=${bookmark.videoId}&t=${bookmark.timestamp}s" target="_blank" class="bookmark-link">
         <div class="bookmark-card-inner">
           <div class="thumbnail-container">
-            <img class="thumbnail" data-src="${thumbnailUrl}" alt="Video thumbnail"/>
+            <img class="thumbnail" src="${thumbnailUrl}" alt="Video thumbnail"/>
             <div class="thumbnail-placeholder"></div>
             <div class="timestamp-badge">${formatTime(bookmark.timestamp)}</div>
           </div>

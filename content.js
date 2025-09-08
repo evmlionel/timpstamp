@@ -298,8 +298,11 @@ function renderOverlay() {
     panel.className = 'ytb-overlay-panel';
     panel.innerHTML = `
       <div class="ytb-overlay-header">
-        <span>Timestamps (${cachedVideoTimestamps.length})</span>
-        <button class="ytb-overlay-close" aria-label="Close">✕</button>
+        <span style="cursor:move" class="drag-handle">Timestamps (${cachedVideoTimestamps.length})</span>
+        <div>
+          <button class="ytb-overlay-hide" aria-label="Hide">👁️</button>
+          <button class="ytb-overlay-close" aria-label="Close">✕</button>
+        </div>
       </div>
       <div class="ytb-overlay-list"></div>
       <div style="font-size:11px;opacity:.7;margin-top:4px;">Alt+[ / Alt+] to navigate</div>
@@ -323,6 +326,47 @@ function renderOverlay() {
       });
 
     panel.querySelector('.ytb-overlay-close')?.addEventListener('click', () => panel.remove());
+    panel.querySelector('.ytb-overlay-hide')?.addEventListener('click', () => {
+      panel.style.display = 'none';
+      setTimeout(() => { panel.style.display = 'block'; }, 1);
+    });
+
+    // Drag support and position persistence
+    const handle = panel.querySelector('.drag-handle');
+    let startX = 0, startY = 0, startRight = 16, startBottom = 80;
+    try {
+      chrome.storage.local.get('overlayPos', (res) => {
+        const pos = res.overlayPos;
+        if (pos && typeof pos.right === 'number' && typeof pos.bottom === 'number') {
+          panel.style.right = pos.right + 'px';
+          panel.style.bottom = pos.bottom + 'px';
+        }
+      });
+    } catch {}
+    const onMove = (e) => {
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      const newRight = Math.max(0, startRight - dx);
+      const newBottom = Math.max(0, startBottom - dy);
+      panel.style.right = newRight + 'px';
+      panel.style.bottom = newBottom + 'px';
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove, true);
+      document.removeEventListener('mouseup', onUp, true);
+      try {
+        const right = parseInt(panel.style.right || '16', 10) || 16;
+        const bottom = parseInt(panel.style.bottom || '80', 10) || 80;
+        chrome.storage.local.set({ overlayPos: { right, bottom } });
+      } catch {}
+    };
+    handle?.addEventListener('mousedown', (e) => {
+      startX = e.clientX; startY = e.clientY;
+      startRight = parseInt(panel.style.right || '16', 10) || 16;
+      startBottom = parseInt(panel.style.bottom || '80', 10) || 80;
+      document.addEventListener('mousemove', onMove, true);
+      document.addEventListener('mouseup', onUp, true);
+    }, true);
 
     panel.addEventListener('click', (e) => {
       const target = e.target;
