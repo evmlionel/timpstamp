@@ -60,6 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let isSelectMode = false;
   const selectedBookmarks = new Set();
   let favoritesOnly = false;
+  let pinnedVideos = new Set();
 
   // Performance optimization variables
   const ITEMS_PER_PAGE = 50; // Show 50 bookmarks at a time
