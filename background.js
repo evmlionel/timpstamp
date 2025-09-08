@@ -1,6 +1,6 @@
 // Constants for storage
 const BOOKMARKS_KEY = 'timpstamp_bookmarks'; // Single key for all bookmarks
-const SETTINGS_KEYS = ['shortcutEnabled', 'darkModeEnabled', 'multiTimestamps'];
+const SETTINGS_KEYS = ['shortcutEnabled', 'darkModeEnabled', 'multiTimestamps', 'overlayEnabled'];
 
 // Initialize storage
 chrome.runtime.onInstalled.addListener(() => {

@@ -3,11 +3,13 @@ async function loadSettings() {
     'shortcutEnabled',
     'darkModeEnabled',
     'multiTimestamps',
+    'overlayEnabled',
   ]);
   return {
     shortcutEnabled: result.shortcutEnabled !== false,
     darkModeEnabled: !!result.darkModeEnabled,
     multiTimestamps: result.multiTimestamps !== false, // default true
+    overlayEnabled: result.overlayEnabled !== false, // default true
   };
 }
 
@@ -25,11 +27,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   const shortcutEnabled = $('shortcutEnabled');
   const darkModeEnabled = $('darkModeEnabled');
   const multiTimestamps = $('multiTimestamps');
+  const overlayEnabled = $('overlayEnabled');
 
   const s = await loadSettings();
   shortcutEnabled.checked = s.shortcutEnabled;
   darkModeEnabled.checked = s.darkModeEnabled;
   multiTimestamps.checked = s.multiTimestamps;
+  overlayEnabled.checked = s.overlayEnabled;
 
   saveBtn.addEventListener('click', async () => {
     saveBtn.disabled = true;
@@ -39,6 +43,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         shortcutEnabled: shortcutEnabled.checked,
         darkModeEnabled: darkModeEnabled.checked,
         multiTimestamps: multiTimestamps.checked,
+        overlayEnabled: overlayEnabled.checked,
       });
       status.textContent = 'Saved.';
     } finally {
@@ -47,4 +52,3 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 });
-

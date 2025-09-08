@@ -1,6 +1,7 @@
 let currentVideoId = null;
 let shortcutEnabled = true; // Default to enabled, will be updated from storage
 let cachedVideoTimestamps = [];
+let overlayEnabled = true;
 
 // Enhanced video element detection with multiple fallbacks
 function findVideoElement() {
@@ -175,6 +176,10 @@ function loadShortcutSetting() {
 chrome.storage.onChanged.addListener((changes, namespace) => {
   if (namespace === 'local' && changes.shortcutEnabled) {
     shortcutEnabled = changes.shortcutEnabled.newValue !== false;
+  }
+  if (namespace === 'local' && changes.overlayEnabled) {
+    overlayEnabled = changes.overlayEnabled.newValue !== false;
+    renderOverlay();
   }
 });
 
@@ -636,11 +641,15 @@ try {
     }
   });
   // Load initial overlay data
-  loadVideoTimestamps();
+  chrome.storage.local.get('overlayEnabled', (res) => {
+    overlayEnabled = res.overlayEnabled !== false;
+    loadVideoTimestamps();
+  });
 
   // Alt+[ / Alt+] navigation across saved timestamps
   document.addEventListener('keydown', (e) => {
     try {
+      if (!overlayEnabled) return;
       if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
       if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) return;
       if (e.key !== '[' && e.key !== ']') return;

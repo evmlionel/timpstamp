@@ -394,8 +394,13 @@ document.addEventListener('DOMContentLoaded', () => {
       g.items.push(b);
       groups.set(b.videoId, g);
     }
-    // Sort groups by newest savedAt
-    const ordered = [...groups.entries()].sort(([, A], [, B]) => {
+    // Sort groups: pinned first, then newest savedAt
+    const ordered = [...groups.entries()].sort((a, b) => {
+      const aPinned = pinnedVideos.has(a[0]);
+      const bPinned = pinnedVideos.has(b[0]);
+      if (aPinned !== bPinned) return aPinned ? -1 : 1;
+      const A = a[1];
+      const B = b[1];
       const aMax = Math.max(...A.items.map((x) => x.savedAt || x.createdAt || 0));
       const bMax = Math.max(...B.items.map((x) => x.savedAt || x.createdAt || 0));
       return bMax - aMax;
@@ -405,13 +410,17 @@ document.addEventListener('DOMContentLoaded', () => {
     for (const [vid, g] of ordered) {
       const card = document.createElement('div');
       card.className = 'group-card';
+      const isPinned = pinnedVideos.has(vid);
       card.innerHTML = `
         <div class="group-header" data-video-id="${vid}">
           <div class="group-title">
             <div class="video" title="${g.videoTitle}">${g.videoTitle}</div>
             <div class="channel">${g.channelTitle || ''}</div>
           </div>
-          <div>(${g.items.length})</div>
+          <div>
+            <button class="pin-btn" aria-pressed="${isPinned ? 'true' : 'false'}" title="Pin group" aria-label="Pin group">📌</button>
+            <span>(${g.items.length})</span>
+          </div>
         </div>
         <div class="group-body" style="display:none;"></div>
       `;
@@ -423,9 +432,21 @@ document.addEventListener('DOMContentLoaded', () => {
         body.appendChild(el);
       });
       const header = card.querySelector('.group-header');
-      header.addEventListener('click', () => {
+      header.addEventListener('click', (e) => {
+        if (e.target && e.target.classList.contains('pin-btn')) return;
         const open = body.style.display !== 'none';
         body.style.display = open ? 'none' : 'block';
+      });
+      const pinBtn = card.querySelector('.pin-btn');
+      pinBtn.addEventListener('click', async (e) => {
+        e.preventDefault(); e.stopPropagation();
+        const pressed = pinBtn.getAttribute('aria-pressed') === 'true';
+        const next = !pressed;
+        pinBtn.setAttribute('aria-pressed', String(next));
+        if (next) pinnedVideos.add(vid); else pinnedVideos.delete(vid);
+        await chrome.storage.local.set({ pinnedVideos: [...pinnedVideos] });
+        // Re-render to reflect pin ordering
+        sortAndRenderBookmarks();
       });
       if (g.items.length <= 3) body.style.display = 'block';
       bookmarksList.appendChild(card);
@@ -598,9 +619,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const id = favBtn.dataset.bookmarkId;
       const toggled = await toggleFavorite(id);
       favBtn.setAttribute('aria-pressed', String(toggled));
-      if (favoritesOnly && !toggled) {
-        // If filtering favorites, remove from view if unfavorited
-        div.remove();
+      const idx = allBookmarks.findIndex((b) => b.id === id);
+      if (idx >= 0) allBookmarks[idx].favorite = toggled;
+      if (favoritesOnly) {
+        sortAndRenderBookmarks();
       }
     });
 
@@ -633,6 +655,20 @@ document.addEventListener('DOMContentLoaded', () => {
     'input',
     debounce(() => sortAndRenderBookmarks(), 300)
   );
+
+  // Prevent global key handlers when editing tags, and add Enter to blur
+  bookmarksList.addEventListener('keydown', (e) => {
+    if (e.target?.classList?.contains('tag-input')) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        e.target.blur();
+      } else if (e.key === 'Backspace') {
+        // Allow normal deletion; just stop bubbling to avoid global handlers
+        e.stopPropagation();
+      }
+    }
+  });
 
   sortSelect.addEventListener('change', (e) => {
     currentSort = e.target.value;
@@ -852,7 +888,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Only handle if search input or textarea is not focused
     if (
       document.activeElement === searchInput ||
-      document.activeElement.tagName === 'TEXTAREA'
+      document.activeElement.tagName === 'TEXTAREA' ||
+      document.activeElement?.tagName === 'INPUT' ||
+      document.activeElement?.classList?.contains('tag-input')
     )
       return;
 
