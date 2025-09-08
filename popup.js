@@ -661,8 +661,12 @@ document.addEventListener('DOMContentLoaded', () => {
       thumbnailImg.style.display = 'none';
       thumbnailPlaceholder.style.display = 'block';
     };
-    // Observe for lazy loading
-    try { lazyObserver.observe(thumbnailImg); } catch {}
+    // Observe for lazy loading only when using data-src
+    try {
+      if (thumbnailImg.dataset && thumbnailImg.dataset.src) {
+        lazyObserver.observe(thumbnailImg);
+      }
+    } catch {}
 
     const stopPropagation = (e) => e.stopPropagation();
 
