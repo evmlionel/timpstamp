@@ -62,6 +62,28 @@ document.addEventListener('DOMContentLoaded', () => {
   let favoritesOnly = false;
   let pinnedVideos = new Set();
   let expandedGroups = new Set();
+  const activeTagFilters = new Set();
+  const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+
+  function filtersActive() {
+    return (
+      (searchInput.value && searchInput.value.trim().length > 0) ||
+      favoritesOnly ||
+      activeTagFilters.size > 0
+    );
+  }
+
+  function updateClearFiltersVisibility() {
+    if (!clearFiltersBtn) return;
+    clearFiltersBtn.style.display = filtersActive() ? 'inline-block' : 'none';
+  }
+  const updateFavoritesButtonLabel = () => {
+    try {
+      const count = allBookmarks.filter((b) => b.favorite).length;
+      favoritesFilterBtn.title = `Show favorites only${count ? ` (${count})` : ''}`;
+      favoritesFilterBtn.setAttribute('aria-label', favoritesFilterBtn.title);
+    } catch {}
+  };
 
   // Performance optimization variables
   const ITEMS_PER_PAGE = 50; // Show 50 bookmarks at a time
@@ -93,6 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Store bookmarks in global variable
       allBookmarks = bookmarks;
+      updateFavoritesButtonLabel();
 
       // Update UI
       loadingState.style.display = 'none';
@@ -120,6 +143,18 @@ document.addEventListener('DOMContentLoaded', () => {
       loadAllData();
     }
   });
+
+  if (clearFiltersBtn) {
+    clearFiltersBtn.addEventListener('click', () => {
+      searchInput.value = '';
+      favoritesOnly = false;
+      favoritesFilterBtn.setAttribute('aria-pressed', 'false');
+      activeTagFilters.clear();
+      sortAndRenderBookmarks();
+      updateClearFiltersVisibility();
+      searchInput.focus();
+    });
+  }
 
   if (shortcutToggle) {
     shortcutToggle.addEventListener('change', (e) => {
@@ -152,6 +187,7 @@ document.addEventListener('DOMContentLoaded', () => {
     favoritesOnly = !favoritesOnly;
     favoritesFilterBtn.setAttribute('aria-pressed', String(favoritesOnly));
     sortAndRenderBookmarks();
+    updateClearFiltersVisibility();
   });
 
   // Export/Import functionality
@@ -644,7 +680,14 @@ document.addEventListener('DOMContentLoaded', () => {
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92zM18 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM6 13c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm12 7.02c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z" fill="currentColor"/></svg>
               </button>
               <button class="favorite-btn icon-btn" data-bookmark-id="${bookmarkId}" title="Toggle favorite" aria-pressed="${bookmark.favorite ? 'true' : 'false'}">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                  <!-- Outline star (shown when not favorited) -->
+                  <svg class="star-outline" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 17.27L5.82 21l1.64-7.03L2 9.24l7.19-.61L12 2l2.81 6.63 7.19.61-5.46 4.73L18.18 21 12 17.27z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
+                  </svg>
+                  <!-- Filled star (shown when favorited) -->
+                  <svg class="star-filled" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+                  </svg>
               </button>
               <button class="delete-btn icon-btn" data-bookmark-id="${bookmarkId}" title="Delete timestamp">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
@@ -690,8 +733,20 @@ document.addEventListener('DOMContentLoaded', () => {
       const id = favBtn.dataset.bookmarkId;
       const toggled = await toggleFavorite(id);
       favBtn.setAttribute('aria-pressed', String(toggled));
+      // Trigger a quick pulse animation when favorited
+      if (toggled) {
+        const filled = favBtn.querySelector('.star-filled');
+        if (filled) {
+          filled.classList.remove('pulse');
+          // Force reflow to restart animation if needed
+          void filled.offsetWidth;
+          filled.classList.add('pulse');
+        }
+      }
       const idx = allBookmarks.findIndex((b) => b.id === id);
       if (idx >= 0) allBookmarks[idx].favorite = toggled;
+      // Instant visual + feedback
+      showNotification(toggled ? 'Added to favorites' : 'Removed from favorites', 'success', notificationArea);
       if (favoritesOnly) {
         sortAndRenderBookmarks();
       }

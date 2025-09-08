@@ -2,6 +2,7 @@ let currentVideoId = null;
 let shortcutEnabled = true; // Default to enabled, will be updated from storage
 let cachedVideoTimestamps = [];
 let overlayEnabled = true;
+let overlayMinimized = false;
 
 // Enhanced video element detection with multiple fallbacks
 function findVideoElement() {
@@ -181,6 +182,10 @@ chrome.storage.onChanged.addListener((changes, namespace) => {
     overlayEnabled = changes.overlayEnabled.newValue !== false;
     renderOverlay();
   }
+  if (namespace === 'local' && changes.overlayMinimized) {
+    overlayMinimized = !!changes.overlayMinimized.newValue;
+    renderOverlay();
+  }
 });
 
 // Enhanced timestamp saving with retry logic and better error handling
@@ -325,10 +330,22 @@ function renderOverlay() {
         list.appendChild(row);
       });
 
+    // Apply initial minimized state to list and button
+    try {
+      list.style.display = overlayMinimized ? 'none' : 'block';
+      const hbInit = panel.querySelector('.ytb-overlay-hide');
+      if (hbInit) hbInit.textContent = overlayMinimized ? '👁️' : '🙈';
+    } catch {}
+
     panel.querySelector('.ytb-overlay-close')?.addEventListener('click', () => panel.remove());
     panel.querySelector('.ytb-overlay-hide')?.addEventListener('click', () => {
-      panel.style.display = 'none';
-      setTimeout(() => { panel.style.display = 'block'; }, 1);
+      overlayMinimized = !overlayMinimized;
+      try {
+        list.style.display = overlayMinimized ? 'none' : 'block';
+        const hb = panel.querySelector('.ytb-overlay-hide');
+        if (hb) hb.textContent = overlayMinimized ? '👁️' : '🙈';
+        chrome.storage.local.set({ overlayMinimized });
+      } catch {}
     });
 
     // Drag support and position persistence
@@ -685,8 +702,9 @@ try {
     }
   });
   // Load initial overlay data
-  chrome.storage.local.get('overlayEnabled', (res) => {
+  chrome.storage.local.get(['overlayEnabled', 'overlayMinimized'], (res) => {
     overlayEnabled = res.overlayEnabled !== false;
+    overlayMinimized = !!res.overlayMinimized;
     loadVideoTimestamps();
   });
 

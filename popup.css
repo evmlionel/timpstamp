@@ -93,6 +93,13 @@ h2 {
 .header-controls {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.header-controls-left,
+.header-controls-right {
+  display: flex;
+  align-items: center;
   gap: 10px;
 }
 
@@ -101,6 +108,29 @@ h2 {
 }
 .favorite-btn[aria-pressed="true"] {
   color: #f59e0b;
+}
+/* Ensure pressed state wins over hover so feedback is instant */
+.favorite-btn[aria-pressed="true"]:hover {
+  color: #f59e0b !important;
+}
+.bookmark-actions .favorite-btn[aria-pressed="true"]:hover {
+  color: #f59e0b !important;
+}
+.favorite-btn .star-filled { display: none; }
+.favorite-btn .star-outline { display: inline; }
+.favorite-btn[aria-pressed="true"] .star-filled { display: inline; }
+.favorite-btn[aria-pressed="true"] .star-outline { display: none; }
+
+/* Pulse animation when favoriting */
+.favorite-btn .star-filled.pulse {
+  animation: favorite-pulse 220ms ease-out;
+  transform-origin: center;
+}
+
+@keyframes favorite-pulse {
+  0% { transform: scale(0.9); }
+  55% { transform: scale(1.2); }
+  100% { transform: scale(1); }
 }
 .favorites-btn svg, .options-btn svg {
   width: 18px;
@@ -248,7 +278,7 @@ h2 {
 
 .bookmark-actions {
   display: flex;
-  gap: 8px;
+  gap: 12px;
   align-items: center;
 }
 
@@ -262,18 +292,24 @@ h2 {
 .icon-btn {
   background: none;
   border: none;
-  padding: 4px;
+  padding: 8px;
+  min-width: 32px;
+  min-height: 32px;
   cursor: pointer;
   color: var(--text-secondary);
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
+  border-radius: 6px;
 }
 
 .icon-btn:hover {
   color: var(--text-primary);
   background-color: rgba(0, 0, 0, 0.1);
+}
+/* But don't override favorite color when pressed */
+.favorite-btn[aria-pressed="true"]:hover {
+  color: #f59e0b !important;
 }
 
 [data-theme="dark"] .icon-btn:hover {
@@ -281,9 +317,14 @@ h2 {
 }
 
 .icon-btn svg {
-  width: 16px;
-  height: 16px;
+  width: 20px;
+  height: 20px;
   vertical-align: middle; /* Align SVG icons vertically */
+}
+
+.icon-btn:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
 }
 
 .hidden {
@@ -1262,3 +1303,12 @@ h2 {
 .tag-chips { display:flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
 .tag-chip { background:#f3f4f6; color:#374151; padding: 4px 8px; border-radius: 999px; font-size:12px; cursor:pointer; }
 .tag-chip.active { background:#111827; color:#fff; }
+.tag-row { display:flex; flex-wrap: wrap; gap:6px; align-items:center; padding: 8px 12px 12px; }
+.tag-chip .remove { margin-left:6px; opacity:.6; font-weight:700; cursor:pointer; }
+.tag-chip .remove:hover { opacity:1; }
+.tag-input-inline { min-width: 90px; max-width: 180px; flex: 0 1 auto; border:1px solid var(--border-primary); background: var(--bg-secondary); color: var(--text-primary); border-radius:6px; padding:4px 8px; font-size:12px; }
+.tag-input-inline:focus { outline: none; border-color: var(--accent-primary); box-shadow: 0 0 0 1px var(--accent-primary); }
+
+/* Clear filters pill */
+.clear-filters { margin-left: 8px; border: 1px solid var(--border-primary); background: var(--bg-secondary); color: var(--text-primary); border-radius: 999px; padding: 4px 10px; font-size: 12px; cursor: pointer; }
+.clear-filters:hover { background: var(--bg-tertiary); }
