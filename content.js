@@ -292,10 +292,85 @@ function fmt(seconds) {
     : `${m}:${s.toString().padStart(2, '0')}`;
 }
 
+function ensureFabRemoved() {
+  try {
+    document.querySelector('.ytb-overlay-fab')?.remove();
+  } catch {}
+}
+
+function renderFab() {
+  try {
+    // Remove any existing FAB first
+    ensureFabRemoved();
+    const fab = document.createElement('button');
+    fab.className = 'ytb-overlay-fab';
+    fab.title = 'Show timestamps overlay';
+    fab.setAttribute('aria-label', 'Show timestamps overlay');
+    fab.textContent = '⏱';
+
+    // Restore previous position if available
+    chrome.storage.local.get('overlayFabPos', (res) => {
+      const pos = res.overlayFabPos;
+      if (pos && typeof pos.right === 'number' && typeof pos.bottom === 'number') {
+        fab.style.right = pos.right + 'px';
+        fab.style.bottom = pos.bottom + 'px';
+      }
+    });
+
+    let startX = 0, startY = 0, startRight = 16, startBottom = 16;
+    const onMove = (e) => {
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      const newRight = Math.max(0, startRight - dx);
+      const newBottom = Math.max(0, startBottom - dy);
+      fab.style.right = newRight + 'px';
+      fab.style.bottom = newBottom + 'px';
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove, true);
+      document.removeEventListener('mouseup', onUp, true);
+      try {
+        const right = parseInt(fab.style.right || '16', 10) || 16;
+        const bottom = parseInt(fab.style.bottom || '16', 10) || 16;
+        chrome.storage.local.set({ overlayFabPos: { right, bottom } });
+      } catch {}
+    };
+
+    fab.addEventListener('mousedown', (e) => {
+      if (e.button !== 0) return; // left click only for drag
+      startX = e.clientX; startY = e.clientY;
+      startRight = parseInt(fab.style.right || '16', 10) || 16;
+      startBottom = parseInt(fab.style.bottom || '16', 10) || 16;
+      document.addEventListener('mousemove', onMove, true);
+      document.addEventListener('mouseup', onUp, true);
+    }, true);
+
+    fab.addEventListener('click', (e) => {
+      // If the user dragged, suppress click by checking small movement could be complex; keep simple.
+      e.preventDefault();
+      e.stopPropagation();
+      overlayEnabled = true;
+      chrome.storage.local.set({ overlayEnabled: true }, () => {
+        ensureFabRemoved();
+        renderOverlay();
+      });
+    });
+
+    document.body.appendChild(fab);
+  } catch {}
+}
+
 function renderOverlay() {
   try {
     // remove old
     document.querySelector('.ytb-overlay-panel')?.remove();
+    ensureFabRemoved();
+    // If overlay is disabled, always show the reopen FAB regardless of data/state
+    if (!overlayEnabled) {
+      // When disabled, show a small reopen FAB instead of the panel
+      renderFab();
+      return;
+    }
     if (!currentVideoId) return;
     if (!Array.isArray(cachedVideoTimestamps) || cachedVideoTimestamps.length === 0) return;
 
@@ -304,9 +379,9 @@ function renderOverlay() {
     panel.innerHTML = `
       <div class="ytb-overlay-header">
         <span style="cursor:move" class="drag-handle">Timestamps (${cachedVideoTimestamps.length})</span>
-        <div>
-          <button class="ytb-overlay-hide" aria-label="Hide">👁️</button>
-          <button class="ytb-overlay-close" aria-label="Close">✕</button>
+        <div class="ytb-overlay-actions">
+          <button class="ytb-overlay-hide" aria-label="Minimize" title="Minimize">🙈</button>
+          <button class="ytb-overlay-close" aria-label="Close" title="Hide until reopened">✕</button>
         </div>
       </div>
       <div class="ytb-overlay-list"></div>
@@ -337,7 +412,13 @@ function renderOverlay() {
       if (hbInit) hbInit.textContent = overlayMinimized ? '👁️' : '🙈';
     } catch {}
 
-    panel.querySelector('.ytb-overlay-close')?.addEventListener('click', () => panel.remove());
+    panel.querySelector('.ytb-overlay-close')?.addEventListener('click', () => {
+      overlayEnabled = false;
+      chrome.storage.local.set({ overlayEnabled: false }, () => {
+        panel.remove();
+        renderFab();
+      });
+    });
     panel.querySelector('.ytb-overlay-hide')?.addEventListener('click', () => {
       overlayMinimized = !overlayMinimized;
       try {

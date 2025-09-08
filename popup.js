@@ -64,6 +64,9 @@ document.addEventListener('DOMContentLoaded', () => {
   let expandedGroups = new Set();
   const activeTagFilters = new Set();
   const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+  const tagChipsContainer = document.getElementById('tagChips');
+  let isEditingTags = false;
+  let isComposing = false;
 
   function filtersActive() {
     return (
@@ -86,9 +89,14 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   // Performance optimization variables
-  const ITEMS_PER_PAGE = 50; // Show 50 bookmarks at a time
+  const ITEMS_PER_PAGE = 50; // legacy flat list paging
   let currentPage = 0;
   let isLoading = false;
+  // Group virtualization
+  const GROUPS_CHUNK_SIZE = 25;
+  let groupsOrdered = [];
+  let groupsRendered = 0;
+  let onScrollHandler = null;
   const lazyObserver = setupLazyLoading();
 
   async function loadAllData() {
@@ -116,6 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // Store bookmarks in global variable
       allBookmarks = bookmarks;
       updateFavoritesButtonLabel();
+      renderTagChips();
 
       // Update UI
       loadingState.style.display = 'none';
@@ -140,6 +149,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // Refresh live when storage changes (e.g., after pressing B on YouTube)
   chrome.storage.onChanged.addListener((changes, ns) => {
     if (ns === 'local' && changes.timpstamp_bookmarks) {
+      // Avoid nuking focus while editing tags
+      if (isEditingTags || document.activeElement?.classList?.contains('tag-input')) {
+        setTimeout(() => {
+          if (!isEditingTags && !document.activeElement?.classList?.contains('tag-input')) {
+            loadAllData();
+          }
+        }, 1200);
+        return;
+      }
       loadAllData();
     }
   });
@@ -455,6 +473,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Filter bookmarks
     filteredBookmarks = allBookmarks.filter((bookmark) => {
       if (favoritesOnly && !bookmark.favorite) return false;
+      // tags filter: require all active tag filters to be present
+      if (activeTagFilters.size > 0) {
+        const tags = new Set((bookmark.tags || []).map((t) => String(t).toLowerCase()));
+        for (const t of activeTagFilters) {
+          if (!tags.has(t)) return false;
+        }
+      }
       const hay = `${bookmark.videoTitle || ''} ${(bookmark.notes || '')} ${(bookmark.tags || []).join(' ')}`.toLowerCase();
       return hay.includes(searchTerm);
     });
@@ -491,7 +516,7 @@ document.addEventListener('DOMContentLoaded', () => {
       groups.set(b.videoId, g);
     }
     // Sort groups: pinned first, then newest savedAt
-    const ordered = [...groups.entries()].sort((a, b) => {
+    groupsOrdered = [...groups.entries()].sort((a, b) => {
       const aPinned = pinnedVideos.has(a[0]);
       const bPinned = pinnedVideos.has(b[0]);
       if (aPinned !== bPinned) return aPinned ? -1 : 1;
@@ -502,8 +527,29 @@ document.addEventListener('DOMContentLoaded', () => {
       return bMax - aMax;
     });
 
-    // Render groups
-    for (const [vid, g] of ordered) {
+    // Reset counters and detach old listener
+    groupsRendered = 0;
+    if (onScrollHandler) window.removeEventListener('scroll', onScrollHandler, { passive: true });
+    bookmarksList.innerHTML = '';
+
+    // Render initial chunk and attach infinite scroll
+    renderNextGroupChunk();
+    onScrollHandler = () => {
+      const scrollPos = window.scrollY + window.innerHeight;
+      const docHeight = document.documentElement.scrollHeight;
+      if (docHeight - scrollPos < 600) {
+        renderNextGroupChunk();
+      }
+    };
+    window.addEventListener('scroll', onScrollHandler, { passive: true });
+  }
+
+  function renderNextGroupChunk() {
+    if (groupsRendered >= groupsOrdered.length) return;
+    const frag = document.createDocumentFragment();
+    const end = Math.min(groupsRendered + GROUPS_CHUNK_SIZE, groupsOrdered.length);
+    for (let i = groupsRendered; i < end; i++) {
+      const [vid, g] = groupsOrdered[i];
       const card = document.createElement('div');
       card.className = 'group-card';
       const isPinned = pinnedVideos.has(vid);
@@ -521,7 +567,6 @@ document.addEventListener('DOMContentLoaded', () => {
         <div class="group-body" style="display:none;"></div>
       `;
       const body = card.querySelector('.group-body');
-      // sort timestamps ascending
       g.items.sort((a, b) => a.timestamp - b.timestamp);
       g.items.forEach((bookmark) => {
         const el = createBookmarkElement(bookmark);
@@ -532,7 +577,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target && e.target.classList.contains('pin-btn')) return;
         const open = body.style.display !== 'none';
         body.style.display = open ? 'none' : 'block';
-        // persist expanded state
         if (open) {
           expandedGroups.delete(vid);
         } else {
@@ -548,12 +592,49 @@ document.addEventListener('DOMContentLoaded', () => {
         pinBtn.setAttribute('aria-pressed', String(next));
         if (next) pinnedVideos.add(vid); else pinnedVideos.delete(vid);
         await chrome.storage.local.set({ pinnedVideos: [...pinnedVideos] });
-        // Re-render to reflect pin ordering
         sortAndRenderBookmarks();
       });
       if (g.items.length <= 3 || expandedGroups.has(vid)) body.style.display = 'block';
-      bookmarksList.appendChild(card);
+      frag.appendChild(card);
     }
+    bookmarksList.appendChild(frag);
+    groupsRendered = end;
+  }
+
+  function renderTagChips() {
+    if (!tagChipsContainer) return;
+    // Aggregate tag counts from all bookmarks
+    const counts = new Map();
+    for (const b of allBookmarks) {
+      for (const t of (b.tags || [])) {
+        const key = String(t).toLowerCase();
+        counts.set(key, (counts.get(key) || 0) + 1);
+      }
+    }
+    // Render top tags by frequency
+    const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20);
+    tagChipsContainer.innerHTML = '';
+    for (const [tag, count] of top) {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'tag-chip' + (activeTagFilters.has(tag) ? ' active' : '');
+      chip.dataset.tag = tag;
+      chip.setAttribute('aria-pressed', activeTagFilters.has(tag) ? 'true' : 'false');
+      chip.title = `Filter by tag: ${tag}`;
+      chip.innerHTML = `<span class="hash">#</span>${tag}<span class="count">${count}</span>`;
+      chip.addEventListener('click', () => {
+        if (activeTagFilters.has(tag)) {
+          activeTagFilters.delete(tag);
+        } else {
+          activeTagFilters.add(tag);
+        }
+        renderTagChips();
+        sortAndRenderBookmarks();
+        updateClearFiltersVisibility();
+      });
+      tagChipsContainer.appendChild(chip);
+    }
+    tagChipsContainer.style.display = top.length ? 'flex' : 'none';
   }
 
   // Render a single page of bookmarks
@@ -795,6 +876,28 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
   });
+  // Track focus state to prevent re-renders stealing focus
+  bookmarksList.addEventListener('focusin', (e) => {
+    if (e.target?.classList?.contains('tag-input')) {
+      isEditingTags = true;
+    }
+  });
+  bookmarksList.addEventListener('focusout', (e) => {
+    if (e.target?.classList?.contains('tag-input')) {
+      isEditingTags = false;
+      try { renderTagChips(); } catch {}
+    }
+  });
+  bookmarksList.addEventListener('compositionstart', (e) => {
+    if (e.target?.classList?.contains('tag-input')) {
+      isComposing = true;
+    }
+  });
+  bookmarksList.addEventListener('compositionend', (e) => {
+    if (e.target?.classList?.contains('tag-input')) {
+      isComposing = false;
+    }
+  });
 
   sortSelect.addEventListener('change', (e) => {
     currentSort = e.target.value;
@@ -932,6 +1035,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const newNotes = e.target.value;
         await saveNoteToBookmark(bookmarkId, newNotes);
       } else if (e.target?.classList.contains('tag-input')) {
+        if (isComposing) return; // don't save mid-IME composition
         const bookmarkId = e.target.dataset.bookmarkId;
         const raw = e.target.value || '';
         const tags = raw
@@ -962,6 +1066,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (i !== -1) {
         bookmarks[i].tags = tags;
         await chrome.storage.local.set({ timpstamp_bookmarks: bookmarks });
+        // Keep in-memory state in sync so we avoid a full reload
+        const j = allBookmarks.findIndex((b) => b.id === bookmarkId);
+        if (j !== -1) allBookmarks[j].tags = tags;
+        try { renderTagChips(); } catch {}
       }
     } catch (_e) {}
   }

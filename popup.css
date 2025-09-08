@@ -152,6 +152,37 @@ h2 {
   padding: 0;
 }
 
+.tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 10px 0 6px 0;
+}
+
+.tag-chip {
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-primary);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+  transition: background .15s ease, color .15s ease, border-color .15s ease, box-shadow .15s ease;
+  display: inline-flex;
+  align-items: center;
+}
+.tag-chip .hash { opacity: .6; margin-right: 2px; }
+.tag-chip .count { opacity: 0.7; margin-left: 6px; font-variant-numeric: tabular-nums; }
+.tag-chip.active {
+  background: var(--accent-bg, rgba(59,130,246,0.12));
+  color: var(--text-primary);
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.15);
+}
+.tag-chip:hover { filter: brightness(1.05); }
+.tag-chip:focus-visible { outline: 2px solid var(--accent-primary); outline-offset: 2px; }
+
 .search-input {
   width: 100%;
   box-sizing: border-box;

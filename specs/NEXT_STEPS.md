@@ -12,10 +12,10 @@ Last updated: 2025-09-08
 - Maintain reliability (Brave/Chromium quirks), performance, and privacy
 
 ## High‑Priority (Next)
-- [ ] Overlay: persistent toggle and affordance
-  - [ ] Add a small header toggle to enable/disable overlay globally
-  - [ ] Optional mini “reopen” button (FAB) when overlay is hidden
-  - [ ] Persist minimized/hidden state per user
+- [x] Overlay: persistent toggle and affordance
+  - [x] Add a small header toggle to enable/disable overlay globally
+  - [x] Optional mini “reopen” button (FAB) when overlay is hidden
+  - [x] Persist minimized/hidden state per user
   - Acceptance: user can hide/show overlay without Options page
 - [ ] Virtualized list in popup
   - [ ] Replace current pagination with virtualization (windowed rows)

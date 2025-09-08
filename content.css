@@ -63,3 +63,34 @@
 .ytb-overlay-item { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; font-size: 13px; }
 .ytb-overlay-item button { background: transparent; color: #fff; border: none; cursor: pointer; opacity: 0.8; }
 .ytb-overlay-item button:hover { opacity: 1; }
+
+/* Reopen floating action button when overlay is disabled */
+.ytb-overlay-fab {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  background: rgba(0,0,0,0.9);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2147483647; /* ensure above YouTube layers */
+  font-size: 18px;
+  user-select: none;
+}
+
+.ytb-overlay-fab:hover { filter: brightness(1.15); }
+
+.ytb-overlay-actions button {
+  background: transparent;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  opacity: 0.85;
+}
+.ytb-overlay-actions button:hover { opacity: 1; }
