@@ -30,9 +30,19 @@ chrome.runtime.onInstalled.addListener(() => {
       if (Object.keys(toSetLocal).length > 0) {
         await chrome.storage.local.set(toSetLocal);
       }
+
+      // Ensure bookmarks key exists to simplify consumers
+      const ensure = await chrome.storage.local.get(BOOKMARKS_KEY);
+      if (!Array.isArray(ensure[BOOKMARKS_KEY])) {
+        await chrome.storage.local.set({ [BOOKMARKS_KEY]: [] });
+      }
     } catch (_e) {
       // Best-effort migration only
       await chrome.storage.local.set({ shortcutEnabled: true });
+      const ensure = await chrome.storage.local.get(BOOKMARKS_KEY);
+      if (!Array.isArray(ensure[BOOKMARKS_KEY])) {
+        await chrome.storage.local.set({ [BOOKMARKS_KEY]: [] });
+      }
     }
   })();
 
@@ -184,27 +194,25 @@ async function handleAddBookmark(bookmarkData, sendResponse) {
     const existingBookmarkIndex = bookmarks.findIndex((b) => b.id === computedId);
 
     if (existingBookmarkIndex !== -1) {
-      // Update existing bookmark
+      // Update existing bookmark (only minimal fields)
+      const existing = bookmarks[existingBookmarkIndex];
       bookmarks[existingBookmarkIndex] = {
-        ...bookmarks[existingBookmarkIndex], // Preserve existing fields like notes, original createdAt
-        videoTitle: bookmarkData.videoTitle, // Update title in case it changed
-        timestamp: bookmarkData.timestamp,
-        formattedTime: bookmarkData.formattedTime,
-        url: bookmarkData.url,
-        // videoId is part of bookmarkData and will be spread via ...bookmarkData if not explicitly listed
-        // Ensure videoId from bookmarkData is used if it's part of the spread
+        ...existing,
         videoId: bookmarkData.videoId,
-        savedAt: Date.now(), // Update the savedAt/updatedAt timestamp
+        videoTitle: bookmarkData.videoTitle,
+        timestamp: bookmarkData.timestamp,
+        savedAt: Date.now(),
       };
-      // id preserved
     } else {
-      // Add new bookmark
+      // Add new bookmark (only minimal fields)
       const newBookmark = {
-        ...bookmarkData, // Contains videoId, videoTitle, timestamp, formattedTime, url
         id: computedId,
-        createdAt: Date.now(), // Timestamp for when it was first bookmarked
-        savedAt: Date.now(), // Timestamp for this specific save/update
-        notes: '', // Initialize notes
+        videoId: bookmarkData.videoId,
+        videoTitle: bookmarkData.videoTitle,
+        timestamp: bookmarkData.timestamp,
+        createdAt: Date.now(),
+        savedAt: Date.now(),
+        notes: '',
       };
       bookmarks.push(newBookmark);
     }

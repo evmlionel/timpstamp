@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // Mock chrome APIs
 const mockChrome = {
   storage: {
-    sync: {
+    local: {
       get: vi.fn(),
       set: vi.fn(),
     },
@@ -88,7 +88,7 @@ describe('Popup Script', () => {
 
     it('should toggle dark mode setting', async () => {
       const darkModeToggle = document.getElementById('darkModeToggle');
-      mockChrome.storage.sync.set = vi.fn();
+      mockChrome.storage.local.set = vi.fn();
 
       // Simulate click event
       darkModeToggle.checked = true;
@@ -97,9 +97,9 @@ describe('Popup Script', () => {
 
       // Since we can't directly test the event listener, we'll test the storage call
       // This would normally be called by the event listener
-      await mockChrome.storage.sync.set({ darkModeEnabled: true });
+      await mockChrome.storage.local.set({ darkModeEnabled: true });
 
-      expect(mockChrome.storage.sync.set).toHaveBeenCalledWith({
+      expect(mockChrome.storage.local.set).toHaveBeenCalledWith({
         darkModeEnabled: true,
       });
     });
@@ -120,7 +120,7 @@ describe('Popup Script', () => {
         },
       ];
 
-      mockChrome.storage.sync.get.mockImplementation((keys) => {
+      mockChrome.storage.local.get.mockImplementation((keys) => {
         if (keys.includes('timpstamp_bookmarks')) {
           return Promise.resolve({
             timpstamp_bookmarks: mockBookmarks,
@@ -136,7 +136,7 @@ describe('Popup Script', () => {
 
       // Mock loadAllData function
       const loadAllData = async () => {
-        const settingResult = await mockChrome.storage.sync.get([
+        const settingResult = await mockChrome.storage.local.get([
           'shortcutEnabled',
           'darkModeEnabled',
         ]);
@@ -148,7 +148,7 @@ describe('Popup Script', () => {
         shortcutToggle.checked = settingResult.shortcutEnabled !== false;
         darkModeToggle.checked = settingResult.darkModeEnabled || false;
 
-        const result = await mockChrome.storage.sync.get('timpstamp_bookmarks');
+        const result = await mockChrome.storage.local.get('timpstamp_bookmarks');
         const bookmarks = result.timpstamp_bookmarks || [];
 
         loadingState.style.display = 'none';
@@ -158,7 +158,7 @@ describe('Popup Script', () => {
 
       const bookmarks = await loadAllData();
 
-      expect(mockChrome.storage.sync.get).toHaveBeenCalledWith([
+      expect(mockChrome.storage.local.get).toHaveBeenCalledWith([
         'shortcutEnabled',
         'darkModeEnabled',
       ]);
@@ -169,11 +169,11 @@ describe('Popup Script', () => {
     });
 
     it('should handle error when loading data fails', async () => {
-      mockChrome.storage.sync.get.mockRejectedValue(new Error('Storage error'));
+      mockChrome.storage.local.get.mockRejectedValue(new Error('Storage error'));
 
       const loadAllData = async () => {
         try {
-          await mockChrome.storage.sync.get([
+          await mockChrome.storage.local.get([
             'shortcutEnabled',
             'darkModeEnabled',
           ]);
@@ -210,7 +210,7 @@ describe('Popup Script', () => {
         },
       ];
 
-      mockChrome.storage.sync.get.mockResolvedValue({
+      mockChrome.storage.local.get.mockResolvedValue({
         timpstamp_bookmarks: mockBookmarks,
       });
 
@@ -235,7 +235,7 @@ describe('Popup Script', () => {
       });
 
       const exportBookmarks = async () => {
-        const result = await mockChrome.storage.sync.get('timpstamp_bookmarks');
+        const result = await mockChrome.storage.local.get('timpstamp_bookmarks');
         const bookmarks = result.timpstamp_bookmarks || [];
 
         if (bookmarks.length === 0) {
@@ -277,7 +277,7 @@ describe('Popup Script', () => {
         { type: 'application/json' }
       );
 
-      mockChrome.storage.sync.set.mockResolvedValue();
+      mockChrome.storage.local.set.mockResolvedValue();
 
       const importBookmarks = async (file) => {
         return new Promise((resolve, reject) => {
@@ -290,7 +290,7 @@ describe('Popup Script', () => {
                 throw new Error('Invalid file format');
               }
 
-              await mockChrome.storage.sync.set({
+              await mockChrome.storage.local.set({
                 timpstamp_bookmarks: bookmarks,
               });
               resolve();
@@ -304,7 +304,7 @@ describe('Popup Script', () => {
       };
 
       await expect(importBookmarks(mockFile)).resolves.toBeUndefined();
-      expect(mockChrome.storage.sync.set).toHaveBeenCalledWith({
+      expect(mockChrome.storage.local.set).toHaveBeenCalledWith({
         timpstamp_bookmarks: mockBookmarks,
       });
     });

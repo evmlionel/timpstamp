@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // Mock chrome APIs
 const mockChrome = {
   storage: {
-    sync: {
+    local: {
       get: vi.fn(),
     },
     onChanged: {
@@ -73,19 +73,19 @@ describe('Content Script', () => {
 
   describe('Shortcut Settings', () => {
     it('should load shortcut setting from storage', () => {
-      mockChrome.storage.sync.get.mockImplementation((_key, callback) => {
+      mockChrome.storage.local.get.mockImplementation((_key, callback) => {
         callback({ shortcutEnabled: false });
       });
 
       const loadShortcutSetting = () => {
-        chrome.storage.sync.get('shortcutEnabled', (result) => {
+        chrome.storage.local.get('shortcutEnabled', (result) => {
           return result.shortcutEnabled !== false;
         });
       };
 
       loadShortcutSetting();
 
-      expect(mockChrome.storage.sync.get).toHaveBeenCalledWith(
+      expect(mockChrome.storage.local.get).toHaveBeenCalledWith(
         'shortcutEnabled',
         expect.any(Function)
       );
@@ -95,18 +95,18 @@ describe('Content Script', () => {
       let shortcutEnabled = true;
 
       const onStorageChanged = (changes, namespace) => {
-        if (namespace === 'sync' && changes.shortcutEnabled) {
+        if (namespace === 'local' && changes.shortcutEnabled) {
           shortcutEnabled = changes.shortcutEnabled.newValue !== false;
         }
       };
 
       // Simulate storage change
-      onStorageChanged({ shortcutEnabled: { newValue: false } }, 'sync');
+      onStorageChanged({ shortcutEnabled: { newValue: false } }, 'local');
 
       expect(shortcutEnabled).toBe(false);
 
       // Simulate another storage change
-      onStorageChanged({ shortcutEnabled: { newValue: true } }, 'sync');
+      onStorageChanged({ shortcutEnabled: { newValue: true } }, 'local');
 
       expect(shortcutEnabled).toBe(true);
     });

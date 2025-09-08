@@ -9,6 +9,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const exportBtn = document.getElementById('exportBtn');
   const importBtn = document.getElementById('importBtn');
   const importFile = document.getElementById('importFile');
+  const optionsBtn = document.getElementById('optionsBtn');
+  const favoritesFilterBtn = document.getElementById('favoritesFilterBtn');
   const selectModeBtn = document.getElementById('selectModeBtn');
   const bulkActions = document.getElementById('bulkActions');
   const selectedCount = document.getElementById('selectedCount');
@@ -24,6 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentSort = 'newest'; // Default sort
   let isSelectMode = false;
   const selectedBookmarks = new Set();
+  let favoritesOnly = false;
 
   // Performance optimization variables
   const ITEMS_PER_PAGE = 50; // Show 50 bookmarks at a time
@@ -79,6 +82,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const isDark = e.target.checked;
     chrome.storage.local.set({ darkModeEnabled: isDark });
     applyTheme(isDark);
+  });
+
+  optionsBtn.addEventListener('click', () => {
+    if (chrome.runtime.openOptionsPage) chrome.runtime.openOptionsPage();
+  });
+
+  favoritesFilterBtn.addEventListener('click', () => {
+    favoritesOnly = !favoritesOnly;
+    favoritesFilterBtn.setAttribute('aria-pressed', String(favoritesOnly));
+    sortAndRenderBookmarks();
   });
 
   // Export/Import functionality
@@ -344,11 +357,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchTerm = searchInput.value.toLowerCase();
 
     // Filter bookmarks
-    filteredBookmarks = allBookmarks.filter(
-      (bookmark) =>
-        (bookmark.videoTitle || '').toLowerCase().includes(searchTerm) ||
-        (bookmark.notes || '').toLowerCase().includes(searchTerm)
-    );
+    filteredBookmarks = allBookmarks.filter((bookmark) => {
+      if (favoritesOnly && !bookmark.favorite) return false;
+      const hay = `${bookmark.videoTitle || ''} ${(bookmark.notes || '')} ${(bookmark.tags || []).join(' ')}`.toLowerCase();
+      return hay.includes(searchTerm);
+    });
 
     // Reset pagination when filter changes
     currentPage = 0;
@@ -488,7 +501,7 @@ document.addEventListener('DOMContentLoaded', () => {
     div.innerHTML = `
     <input type="checkbox" class="bookmark-checkbox" data-bookmark-id="${bookmarkId}">
     <div class="bookmark-card-content">
-      <a href="${bookmark.url}" target="_blank" class="bookmark-link">
+      <a href="https://youtube.com/watch?v=${bookmark.videoId}&t=${bookmark.timestamp}s" target="_blank" class="bookmark-link">
         <div class="bookmark-card-inner">
           <div class="thumbnail-container">
             <img class="thumbnail" data-src="${thumbnailUrl}" alt="Video thumbnail"/>
@@ -505,6 +518,9 @@ document.addEventListener('DOMContentLoaded', () => {
           <div class="bookmark-actions">
               <button class="share-btn icon-btn" data-url="${bookmark.url}" title="Copy link to clipboard">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92zM18 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM6 13c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm12 7.02c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z" fill="currentColor"/></svg>
+              </button>
+              <button class="favorite-btn icon-btn" data-bookmark-id="${bookmarkId}" title="Toggle favorite" aria-pressed="${bookmark.favorite ? 'true' : 'false'}">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
               </button>
               <button class="delete-btn icon-btn" data-bookmark-id="${bookmarkId}" title="Delete timestamp">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
@@ -530,10 +546,24 @@ document.addEventListener('DOMContentLoaded', () => {
       e.stopPropagation();
       e.preventDefault();
       try {
-        await navigator.clipboard.writeText(shareBtn.dataset.url);
+        const url = `https://youtube.com/watch?v=${bookmark.videoId}&t=${bookmark.timestamp}s`;
+        await navigator.clipboard.writeText(url);
         showNotification('Link copied!', 'success', notificationArea);
       } catch (_err) {
         showNotification('Failed to copy link', 'error', notificationArea);
+      }
+    });
+
+    const favBtn = div.querySelector('.favorite-btn');
+    favBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      const id = favBtn.dataset.bookmarkId;
+      const toggled = await toggleFavorite(id);
+      favBtn.setAttribute('aria-pressed', String(toggled));
+      if (favoritesOnly && !toggled) {
+        // If filtering favorites, remove from view if unfavorited
+        div.remove();
       }
     });
 
@@ -705,6 +735,17 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }, 500) // Adjust debounce time as needed
   );
+
+  async function toggleFavorite(bookmarkId) {
+    const result = await chrome.storage.local.get('timpstamp_bookmarks');
+    const bookmarks = result.timpstamp_bookmarks || [];
+    const i = bookmarks.findIndex((b) => b.id === bookmarkId);
+    if (i === -1) return false;
+    const newValue = !bookmarks[i].favorite;
+    bookmarks[i].favorite = newValue;
+    await chrome.storage.local.set({ timpstamp_bookmarks: bookmarks });
+    return newValue;
+  }
 
   // Keyboard Navigation
   let selectedBookmarkIndex = -1;

@@ -3,11 +3,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 // Mock chrome APIs before importing the module
 const mockChrome = {
   storage: {
-    sync: {
+    local: {
       get: vi.fn(),
       set: vi.fn(),
       getBytesInUse: vi.fn(),
-      QUOTA_BYTES: 102400,
+      QUOTA_BYTES: 5 * 1024 * 1024,
+    },
+    sync: {
+      get: vi.fn(),
     },
   },
   runtime: {
@@ -54,37 +57,36 @@ describe('Background Script', () => {
   describe('Storage Operations', () => {
     it('should initialize empty bookmarks array on install', () => {
       const mockGetResult = {};
-      mockChrome.storage.sync.get.mockImplementation((_keys, callback) => {
+      mockChrome.storage.local.get.mockImplementation((_keys, callback) => {
         callback(mockGetResult);
       });
 
-      mockChrome.storage.sync.set.mockImplementation((_data, callback) => {
+      mockChrome.storage.local.set.mockImplementation((_data, callback) => {
         callback();
       });
 
       // Simulate the onInstalled listener behavior
       const onInstalledHandler = () => {
-        chrome.storage.sync.get(
+        chrome.storage.local.get(
           ['timpstamp_bookmarks', 'shortcutEnabled'],
           (result) => {
             if (!result.timpstamp_bookmarks) {
-              chrome.storage.sync.set({ timpstamp_bookmarks: [] }, () => {});
+              chrome.storage.local.set({ timpstamp_bookmarks: [] }, () => {});
             }
             if (typeof result.shortcutEnabled === 'undefined') {
-              chrome.storage.sync.set({ shortcutEnabled: true }, () => {});
+              chrome.storage.local.set({ shortcutEnabled: true }, () => {});
             }
           }
         );
-        chrome.alarms.create('keepAlive', { periodInMinutes: 0.5 });
       };
 
       onInstalledHandler();
 
-      expect(mockChrome.storage.sync.get).toHaveBeenCalledWith(
+      expect(mockChrome.storage.local.get).toHaveBeenCalledWith(
         ['timpstamp_bookmarks', 'shortcutEnabled'],
         expect.any(Function)
       );
-      expect(mockChrome.storage.sync.set).toHaveBeenCalledWith(
+      expect(mockChrome.storage.local.set).toHaveBeenCalledWith(
         { timpstamp_bookmarks: [] },
         expect.any(Function)
       );
@@ -92,70 +94,37 @@ describe('Background Script', () => {
 
     it('should set default shortcutEnabled to true', () => {
       const mockGetResult = { timpstamp_bookmarks: [] };
-      mockChrome.storage.sync.get.mockImplementation((_keys, callback) => {
+      mockChrome.storage.local.get.mockImplementation((_keys, callback) => {
         callback(mockGetResult);
       });
 
-      mockChrome.storage.sync.set.mockImplementation((_data, callback) => {
+      mockChrome.storage.local.set.mockImplementation((_data, callback) => {
         callback();
       });
 
       // Simulate the onInstalled listener behavior
       const onInstalledHandler = () => {
-        chrome.storage.sync.get(
+        chrome.storage.local.get(
           ['timpstamp_bookmarks', 'shortcutEnabled'],
           (result) => {
             if (!result.timpstamp_bookmarks) {
-              chrome.storage.sync.set({ timpstamp_bookmarks: [] }, () => {});
+              chrome.storage.local.set({ timpstamp_bookmarks: [] }, () => {});
             }
             if (typeof result.shortcutEnabled === 'undefined') {
-              chrome.storage.sync.set({ shortcutEnabled: true }, () => {});
+              chrome.storage.local.set({ shortcutEnabled: true }, () => {});
             }
           }
         );
-        chrome.alarms.create('keepAlive', { periodInMinutes: 0.5 });
       };
 
       onInstalledHandler();
 
-      expect(mockChrome.storage.sync.set).toHaveBeenCalledWith(
+      expect(mockChrome.storage.local.set).toHaveBeenCalledWith(
         { shortcutEnabled: true },
         expect.any(Function)
       );
     });
-
-    it('should create keep-alive alarm on install', () => {
-      const mockGetResult = { timpstamp_bookmarks: [], shortcutEnabled: true };
-      mockChrome.storage.sync.get.mockImplementation((_keys, callback) => {
-        callback(mockGetResult);
-      });
-
-      mockChrome.storage.sync.set.mockImplementation((_data, callback) => {
-        callback();
-      });
-
-      // Simulate the onInstalled listener behavior
-      const onInstalledHandler = () => {
-        chrome.storage.sync.get(
-          ['timpstamp_bookmarks', 'shortcutEnabled'],
-          (result) => {
-            if (!result.timpstamp_bookmarks) {
-              chrome.storage.sync.set({ timpstamp_bookmarks: [] }, () => {});
-            }
-            if (typeof result.shortcutEnabled === 'undefined') {
-              chrome.storage.sync.set({ shortcutEnabled: true }, () => {});
-            }
-          }
-        );
-        chrome.alarms.create('keepAlive', { periodInMinutes: 0.5 });
-      };
-
-      onInstalledHandler();
-
-      expect(mockChrome.alarms.create).toHaveBeenCalledWith('keepAlive', {
-        periodInMinutes: 0.5,
-      });
-    });
+    
   });
 
   describe('Bookmark Operations', () => {
@@ -169,11 +138,11 @@ describe('Background Script', () => {
 
     it('should add new bookmark successfully', async () => {
       const existingBookmarks = [];
-      mockChrome.storage.sync.get.mockResolvedValue({
+      mockChrome.storage.local.get.mockResolvedValue({
         timpstamp_bookmarks: existingBookmarks,
       });
-      mockChrome.storage.sync.getBytesInUse.mockResolvedValue(1000);
-      mockChrome.storage.sync.set.mockResolvedValue();
+      mockChrome.storage.local.getBytesInUse.mockResolvedValue(1000);
+      mockChrome.storage.local.set.mockResolvedValue();
 
       const sendResponse = vi.fn();
 
@@ -188,7 +157,7 @@ describe('Background Script', () => {
           return;
         }
 
-        const result = await mockChrome.storage.sync.get('timpstamp_bookmarks');
+        const result = await mockChrome.storage.local.get('timpstamp_bookmarks');
         const bookmarks = result.timpstamp_bookmarks || [];
 
         const existingIndex = bookmarks.findIndex(
@@ -206,13 +175,13 @@ describe('Background Script', () => {
           bookmarks.push(newBookmark);
         }
 
-        await mockChrome.storage.sync.set({ timpstamp_bookmarks: bookmarks });
+        await mockChrome.storage.local.set({ timpstamp_bookmarks: bookmarks });
         sendResponse({ success: true, message: 'Timestamp saved! 🎉' });
       };
 
       await handleAddBookmark(mockBookmarkData, sendResponse);
 
-      expect(mockChrome.storage.sync.set).toHaveBeenCalledWith({
+      expect(mockChrome.storage.local.set).toHaveBeenCalledWith({
         timpstamp_bookmarks: expect.arrayContaining([
           expect.objectContaining({
             id: 'abc123',
@@ -245,16 +214,16 @@ describe('Background Script', () => {
         },
       ];
 
-      mockChrome.storage.sync.get.mockResolvedValue({
+      mockChrome.storage.local.get.mockResolvedValue({
         timpstamp_bookmarks: existingBookmarks,
       });
-      mockChrome.storage.sync.getBytesInUse.mockResolvedValue(1000);
-      mockChrome.storage.sync.set.mockResolvedValue();
+      mockChrome.storage.local.getBytesInUse.mockResolvedValue(1000);
+      mockChrome.storage.local.set.mockResolvedValue();
 
       const sendResponse = vi.fn();
 
       const handleAddBookmark = async (bookmarkData, sendResponse) => {
-        const result = await mockChrome.storage.sync.get('timpstamp_bookmarks');
+        const result = await mockChrome.storage.local.get('timpstamp_bookmarks');
         const bookmarks = result.timpstamp_bookmarks || [];
 
         const existingIndex = bookmarks.findIndex(
@@ -273,13 +242,13 @@ describe('Background Script', () => {
           };
         }
 
-        await mockChrome.storage.sync.set({ timpstamp_bookmarks: bookmarks });
+        await mockChrome.storage.local.set({ timpstamp_bookmarks: bookmarks });
         sendResponse({ success: true, message: 'Timestamp updated! 🎉' });
       };
 
       await handleAddBookmark(mockBookmarkData, sendResponse);
 
-      expect(mockChrome.storage.sync.set).toHaveBeenCalledWith({
+      expect(mockChrome.storage.local.set).toHaveBeenCalledWith({
         timpstamp_bookmarks: expect.arrayContaining([
           expect.objectContaining({
             id: 'abc123',
@@ -325,18 +294,18 @@ describe('Background Script', () => {
     });
 
     it('should handle storage quota exceeded', async () => {
-      mockChrome.storage.sync.get.mockResolvedValue({
+      mockChrome.storage.local.get.mockResolvedValue({
         timpstamp_bookmarks: [],
       });
-      mockChrome.storage.sync.getBytesInUse.mockResolvedValue(100000); // Near quota
-      mockChrome.storage.sync.set.mockResolvedValue();
+      mockChrome.storage.local.getBytesInUse.mockResolvedValue(5 * 1024 * 1024 - 10); // Near local quota
+      mockChrome.storage.local.set.mockResolvedValue();
 
       const sendResponse = vi.fn();
 
       const handleAddBookmark = async (bookmarkData, sendResponse) => {
         try {
-          const bytesInUse = await mockChrome.storage.sync.getBytesInUse();
-          const maxBytes = mockChrome.storage.sync.QUOTA_BYTES || 102400;
+          const bytesInUse = await mockChrome.storage.local.getBytesInUse();
+          const maxBytes = mockChrome.storage.local.QUOTA_BYTES || 5 * 1024 * 1024;
           const bookmarksSize = JSON.stringify([bookmarkData]).length;
 
           if (bytesInUse + bookmarksSize > maxBytes * 0.9) {
@@ -373,21 +342,21 @@ describe('Background Script', () => {
         },
       ];
 
-      mockChrome.storage.sync.get.mockResolvedValue({
+      mockChrome.storage.local.get.mockResolvedValue({
         timpstamp_bookmarks: existingBookmarks,
       });
-      mockChrome.storage.sync.set.mockResolvedValue();
+      mockChrome.storage.local.set.mockResolvedValue();
 
       const sendResponse = vi.fn();
 
       const handleDeleteBookmark = async (bookmarkId, sendResponse) => {
-        const result = await mockChrome.storage.sync.get('timpstamp_bookmarks');
+        const result = await mockChrome.storage.local.get('timpstamp_bookmarks');
         const allBookmarks = result.timpstamp_bookmarks || [];
         const updatedBookmarks = allBookmarks.filter(
           (b) => b.id !== bookmarkId
         );
 
-        await mockChrome.storage.sync.set({
+        await mockChrome.storage.local.set({
           timpstamp_bookmarks: updatedBookmarks,
         });
         sendResponse({ success: true });
@@ -395,7 +364,7 @@ describe('Background Script', () => {
 
       await handleDeleteBookmark('abc123', sendResponse);
 
-      expect(mockChrome.storage.sync.set).toHaveBeenCalledWith({
+      expect(mockChrome.storage.local.set).toHaveBeenCalledWith({
         timpstamp_bookmarks: [
           {
             id: 'def456',
@@ -420,10 +389,10 @@ describe('Background Script', () => {
         },
       ];
 
-      mockChrome.storage.sync.get.mockResolvedValue({
+      mockChrome.storage.local.get.mockResolvedValue({
         timpstamp_bookmarks: existingBookmarks,
       });
-      mockChrome.storage.sync.set.mockResolvedValue();
+      mockChrome.storage.local.set.mockResolvedValue();
 
       const sendResponse = vi.fn();
 
@@ -432,7 +401,7 @@ describe('Background Script', () => {
         notes,
         sendResponse
       ) => {
-        const result = await mockChrome.storage.sync.get('timpstamp_bookmarks');
+        const result = await mockChrome.storage.local.get('timpstamp_bookmarks');
         const allBookmarks = result.timpstamp_bookmarks || [];
         const bookmarkIndex = allBookmarks.findIndex(
           (b) => b.id === bookmarkId
@@ -446,7 +415,7 @@ describe('Background Script', () => {
         allBookmarks[bookmarkIndex].notes = notes;
         allBookmarks[bookmarkIndex].savedAt = Date.now();
 
-        await mockChrome.storage.sync.set({
+        await mockChrome.storage.local.set({
           timpstamp_bookmarks: allBookmarks,
         });
         sendResponse({ success: true });
@@ -454,7 +423,7 @@ describe('Background Script', () => {
 
       await handleUpdateBookmarkNotes('abc123', 'New notes', sendResponse);
 
-      expect(mockChrome.storage.sync.set).toHaveBeenCalledWith({
+      expect(mockChrome.storage.local.set).toHaveBeenCalledWith({
         timpstamp_bookmarks: [
           expect.objectContaining({
             id: 'abc123',

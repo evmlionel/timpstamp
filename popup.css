@@ -96,6 +96,14 @@ h2 {
   gap: 10px;
 }
 
+.favorites-btn[aria-pressed="true"] {
+  color: #f59e0b;
+}
+.favorites-btn svg, .options-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
 .keyboard-shortcut {
   display: flex;
   align-items: center;
