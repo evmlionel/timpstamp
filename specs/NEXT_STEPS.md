@@ -19,7 +19,8 @@ Last updated: 2025-09-09
   - Acceptance: user can hide/show overlay without Options page
 - [ ] Virtualized list in popup
   - [x] Replace pagination with chunked group virtualization + infinite scroll
-  - [ ] Windowing inside large groups (very long per‑video lists)
+  - [x] Incremental rendering inside large groups (chunked load + sentinel)
+  - [ ] True windowing (unmount off‑screen items) for very large groups
   - [ ] Perf test with 5k+ timestamps; tune chunk size and thresholds
   - Acceptance: lists feel fast with 5k+ timestamps
 - [x] Tag chips — global filters
