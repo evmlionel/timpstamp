@@ -709,10 +709,17 @@ document.addEventListener('DOMContentLoaded', () => {
         renderMoreInGroup(vid, body, GROUP_ITEMS_CHUNK_SIZE);
       }
       const header = card.querySelector('.group-header');
-      header.addEventListener('click', async (e) => {
-        if (e.target && e.target.classList.contains('pin-btn')) return;
+      // A11y: make header operable and reflect state
+      header.setAttribute('role', 'button');
+      header.setAttribute('tabindex', '0');
+      header.setAttribute(
+        'aria-expanded',
+        g.items.length <= 3 || expandedGroups.has(vid) ? 'true' : 'false'
+      );
+      const toggleGroup = async () => {
         const open = body.style.display !== 'none';
         body.style.display = open ? 'none' : 'block';
+        header.setAttribute('aria-expanded', open ? 'false' : 'true');
         if (open) {
           expandedGroups.delete(vid);
         } else {
@@ -721,6 +728,16 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
           await storageSet({ expandedGroups: [...expandedGroups] });
         } catch {}
+      };
+      header.addEventListener('click', async (e) => {
+        if (e.target && e.target.classList.contains('pin-btn')) return;
+        await toggleGroup();
+      });
+      header.addEventListener('keydown', async (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          await toggleGroup();
+        }
       });
       const pinBtn = card.querySelector('.pin-btn');
       pinBtn.addEventListener('click', async (e) => {
@@ -734,8 +751,9 @@ document.addEventListener('DOMContentLoaded', () => {
         await chrome.storage.local.set({ pinnedVideos: [...pinnedVideos] });
         sortAndRenderBookmarks();
       });
-      if (g.items.length <= 3 || expandedGroups.has(vid))
+      if (g.items.length <= 3 || expandedGroups.has(vid)) {
         body.style.display = 'block';
+      }
       frag.appendChild(card);
     }
     bookmarksList.appendChild(frag);
@@ -1064,8 +1082,29 @@ document.addEventListener('DOMContentLoaded', () => {
         e.stopPropagation();
         e.target.blur();
       } else if (e.key === 'Backspace') {
-        // Allow normal deletion; just stop bubbling to avoid global handlers
-        e.stopPropagation();
+        const input = e.target;
+        // If input is empty or only spaces, pop last tag
+        if (!isComposing && String(input.value || '').trim() === '') {
+          e.preventDefault();
+          e.stopPropagation();
+          const bookmarkId = input.dataset.bookmarkId;
+          const i = allBookmarks.findIndex((b) => b.id === bookmarkId);
+          if (i !== -1) {
+            const current = Array.isArray(allBookmarks[i].tags)
+              ? [...allBookmarks[i].tags]
+              : [];
+            if (current.length > 0) {
+              current.pop();
+              // Persist and update UI field
+              saveTagsToBookmark(bookmarkId, current).then(() => {
+                input.value = current.join(', ');
+              });
+            }
+          }
+        } else {
+          // Normal deletion; just stop bubbling to avoid global handlers
+          e.stopPropagation();
+        }
       }
     }
   });

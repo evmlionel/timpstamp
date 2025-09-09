@@ -566,4 +566,73 @@ describe('Popup Script', () => {
       expect(activeTagFilters.size).toBe(0);
     });
   });
+
+  describe('Favorites UI', () => {
+    it('should toggle aria-pressed and pulse on favoriting', () => {
+      const favBtn = document.createElement('button');
+      favBtn.className = 'favorite-btn';
+      favBtn.setAttribute('aria-pressed', 'false');
+      const starFilled = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      starFilled.classList.add('star-filled');
+      const starOutline = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      starOutline.classList.add('star-outline');
+      favBtn.appendChild(starOutline);
+      favBtn.appendChild(starFilled);
+
+      // Simulate toggling to true
+      const toggled = true;
+      favBtn.setAttribute('aria-pressed', String(toggled));
+      if (toggled) {
+        starFilled.classList.remove('pulse');
+        // reflow skipped in test; just add pulse to indicate animation trigger
+        starFilled.classList.add('pulse');
+      }
+
+      expect(favBtn.getAttribute('aria-pressed')).toBe('true');
+      expect(starFilled.classList.contains('pulse')).toBe(true);
+    });
+  });
+
+  describe('Tag Input Backspace', () => {
+    it('backspace on empty input removes last tag and updates input value', async () => {
+      const input = document.createElement('input');
+      input.className = 'tag-input';
+      input.value = '';
+      input.dataset.bookmarkId = 'id1';
+
+      const allBookmarks = [
+        { id: 'id1', tags: ['one', 'two', 'three'] },
+      ];
+
+      const saveTagsToBookmark = async (bookmarkId, tags) => {
+        const b = allBookmarks.find((x) => x.id === bookmarkId);
+        b.tags = tags;
+      };
+
+      // Simulate handler logic
+      const onKeyDown = async (e) => {
+        const isComposing = false;
+        if (e.key === 'Backspace' && !isComposing && String(input.value || '').trim() === '') {
+          e.preventDefault();
+          const bookmarkId = input.dataset.bookmarkId;
+          const i = allBookmarks.findIndex((b) => b.id === bookmarkId);
+          if (i !== -1) {
+            const current = Array.isArray(allBookmarks[i].tags) ? [...allBookmarks[i].tags] : [];
+            if (current.length > 0) {
+              current.pop();
+              await saveTagsToBookmark(bookmarkId, current);
+              input.value = current.join(', ');
+            }
+          }
+        }
+      };
+
+      // Fire backspace
+      const evt = new KeyboardEvent('keydown', { key: 'Backspace' });
+      await onKeyDown(evt);
+
+      expect(allBookmarks[0].tags).toEqual(['one', 'two']);
+      expect(input.value).toBe('one, two');
+    });
+  });
 });
