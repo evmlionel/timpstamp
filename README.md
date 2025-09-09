@@ -49,7 +49,16 @@ v1.1
 ## 🛠️ Development
 
 ### Prerequisites
-- Node.js (v14 or higher)
-- Bun package manager
+- Node.js (v18+ recommended)
+- Bun package manager (1.2.21)
 
 ### Setup
+- Install deps: `bun install`
+- Run tests: `bun run test` (or `bun run test:run` for CI mode)
+- Lint/format check: `bun run check`
+- Auto-fix: `bun run check:fix` (or `bun run format:fix`, `bun run lint:fix`)
+
+### Git Hooks
+- Hooks live in `.githooks/`. Enable them once per clone:
+  - `git config core.hooksPath .githooks`
+- Pre-commit runs Biome on staged files and writes fixes.
