@@ -18,6 +18,7 @@
     "ci": "biome check . && vitest run",
     "perf:gen": "bun scripts/generate-sample-bookmarks.mjs > sample-bookmarks.json"
   },
+  "bin": {},
   "keywords": [
     "chrome-extension",
     "youtube",

@@ -47,10 +47,9 @@ for (let v = 0; v < numVideos; v++) {
     const seconds = randInt(10, 60 * 60 * 2); // up to 2 hours
     const savedAt = now - randInt(0, 1000 * 60 * 60 * 24 * 90); // last 90 days
     const id = `${videoId}-${pad(i)}-${idCounter++}`;
-    const tags = Array.from(new Set([randomFrom(TAGS), randomFrom(TAGS)])).slice(
-      0,
-      randInt(0, 2),
-    );
+    const tags = Array.from(
+      new Set([randomFrom(TAGS), randomFrom(TAGS)])
+    ).slice(0, randInt(0, 2));
     bookmarks.push({
       id,
       videoId,
@@ -71,4 +70,3 @@ const out = {
 };
 
 process.stdout.write(JSON.stringify(out, null, 2));
-

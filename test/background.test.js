@@ -124,7 +124,6 @@ describe('Background Script', () => {
         expect.any(Function)
       );
     });
-    
   });
 
   describe('Bookmark Operations', () => {
@@ -157,7 +156,9 @@ describe('Background Script', () => {
           return;
         }
 
-        const result = await mockChrome.storage.local.get('timpstamp_bookmarks');
+        const result = await mockChrome.storage.local.get(
+          'timpstamp_bookmarks'
+        );
         const bookmarks = result.timpstamp_bookmarks || [];
 
         const existingIndex = bookmarks.findIndex(
@@ -223,7 +224,9 @@ describe('Background Script', () => {
       const sendResponse = vi.fn();
 
       const handleAddBookmark = async (bookmarkData, sendResponse) => {
-        const result = await mockChrome.storage.local.get('timpstamp_bookmarks');
+        const result = await mockChrome.storage.local.get(
+          'timpstamp_bookmarks'
+        );
         const bookmarks = result.timpstamp_bookmarks || [];
 
         const existingIndex = bookmarks.findIndex(
@@ -297,7 +300,9 @@ describe('Background Script', () => {
       mockChrome.storage.local.get.mockResolvedValue({
         timpstamp_bookmarks: [],
       });
-      mockChrome.storage.local.getBytesInUse.mockResolvedValue(5 * 1024 * 1024 - 10); // Near local quota
+      mockChrome.storage.local.getBytesInUse.mockResolvedValue(
+        5 * 1024 * 1024 - 10
+      ); // Near local quota
       mockChrome.storage.local.set.mockResolvedValue();
 
       const sendResponse = vi.fn();
@@ -305,7 +310,8 @@ describe('Background Script', () => {
       const handleAddBookmark = async (bookmarkData, sendResponse) => {
         try {
           const bytesInUse = await mockChrome.storage.local.getBytesInUse();
-          const maxBytes = mockChrome.storage.local.QUOTA_BYTES || 5 * 1024 * 1024;
+          const maxBytes =
+            mockChrome.storage.local.QUOTA_BYTES || 5 * 1024 * 1024;
           const bookmarksSize = JSON.stringify([bookmarkData]).length;
 
           if (bytesInUse + bookmarksSize > maxBytes * 0.9) {
@@ -350,7 +356,9 @@ describe('Background Script', () => {
       const sendResponse = vi.fn();
 
       const handleDeleteBookmark = async (bookmarkId, sendResponse) => {
-        const result = await mockChrome.storage.local.get('timpstamp_bookmarks');
+        const result = await mockChrome.storage.local.get(
+          'timpstamp_bookmarks'
+        );
         const allBookmarks = result.timpstamp_bookmarks || [];
         const updatedBookmarks = allBookmarks.filter(
           (b) => b.id !== bookmarkId
@@ -401,7 +409,9 @@ describe('Background Script', () => {
         notes,
         sendResponse
       ) => {
-        const result = await mockChrome.storage.local.get('timpstamp_bookmarks');
+        const result = await mockChrome.storage.local.get(
+          'timpstamp_bookmarks'
+        );
         const allBookmarks = result.timpstamp_bookmarks || [];
         const bookmarkIndex = allBookmarks.findIndex(
           (b) => b.id === bookmarkId

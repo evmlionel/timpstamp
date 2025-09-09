@@ -22,8 +22,9 @@ export async function setSettings(partial) {
 export async function getBookmarks() {
   const res = await chrome.storage.local.get(BOOKMARKS_KEY);
   const list = Array.isArray(res[BOOKMARKS_KEY]) ? res[BOOKMARKS_KEY] : [];
-  return list.filter((b) =>
-    b && typeof b === 'object' && b.videoId && typeof b.timestamp === 'number'
+  return list.filter(
+    (b) =>
+      b && typeof b === 'object' && b.videoId && typeof b.timestamp === 'number'
   );
 }
 
@@ -68,4 +69,3 @@ export async function deleteBookmark(id) {
   const updated = bookmarks.filter((b) => b.id !== id);
   await saveBookmarks(updated);
 }
-
