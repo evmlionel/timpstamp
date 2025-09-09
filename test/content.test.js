@@ -5,6 +5,7 @@ const mockChrome = {
   storage: {
     local: {
       get: vi.fn(),
+      set: vi.fn(),
     },
     onChanged: {
       addListener: vi.fn(),
@@ -518,6 +519,70 @@ describe('Content Script', () => {
 
       expect(saveTimestampCalled).toBe(false);
       expect(mockEvent.preventDefault).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Overlay Persistence', () => {
+    beforeEach(() => {
+      // Ensure a real JSDOM document for these tests
+      Object.defineProperty(global, 'document', {
+        value: window.document,
+        writable: true,
+      });
+    });
+    it('should toggle overlay minimized and persist state', async () => {
+      const hideBtn = { textContent: '' };
+      const panel = {
+        querySelector: (sel) => (sel === '.ytb-overlay-hide' ? hideBtn : null),
+      };
+      const list = { style: {} };
+
+      let overlayMinimized = false;
+      mockChrome.storage.local.set.mockResolvedValue();
+
+      const onHideClick = async () => {
+        overlayMinimized = !overlayMinimized;
+        list.style.display = overlayMinimized ? 'none' : 'block';
+        const hb = panel.querySelector('.ytb-overlay-hide');
+        if (hb) hb.textContent = overlayMinimized ? '👁️' : '🙈';
+        await chrome.storage.local.set({ overlayMinimized });
+      };
+
+      await onHideClick();
+      expect(overlayMinimized).toBe(true);
+      expect(list.style.display).toBe('none');
+      expect(mockChrome.storage.local.set).toHaveBeenCalledWith(
+        expect.objectContaining({ overlayMinimized: true })
+      );
+
+      await onHideClick();
+      expect(overlayMinimized).toBe(false);
+      expect(list.style.display).toBe('block');
+      expect(mockChrome.storage.local.set).toHaveBeenCalledWith(
+        expect.objectContaining({ overlayMinimized: false })
+      );
+    });
+
+    it('should disable overlay and persist when closed', async () => {
+      const panel = { remove: vi.fn() };
+
+      let overlayEnabled = true;
+      const renderFab = vi.fn();
+      mockChrome.storage.local.set.mockResolvedValue();
+
+      const onCloseClick = async () => {
+        overlayEnabled = false;
+        await chrome.storage.local.set({ overlayEnabled: false });
+        panel.remove();
+        renderFab();
+      };
+
+      await onCloseClick();
+      expect(overlayEnabled).toBe(false);
+      expect(mockChrome.storage.local.set).toHaveBeenCalledWith(
+        expect.objectContaining({ overlayEnabled: false })
+      );
+      expect(renderFab).toHaveBeenCalled();
     });
   });
 });
