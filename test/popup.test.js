@@ -528,7 +528,9 @@ describe('Popup Script', () => {
       const filterByTags = (bookmarks, active) => {
         if (active.size === 0) return bookmarks;
         return bookmarks.filter((b) => {
-          const tags = new Set((b.tags || []).map((t) => String(t).toLowerCase()));
+          const tags = new Set(
+            (b.tags || []).map((t) => String(t).toLowerCase())
+          );
           for (const t of active) if (!tags.has(t)) return false;
           return true;
         });

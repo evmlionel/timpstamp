@@ -311,20 +311,27 @@ function renderFab() {
     // Restore previous position if available
     chrome.storage.local.get('overlayFabPos', (res) => {
       const pos = res.overlayFabPos;
-      if (pos && typeof pos.right === 'number' && typeof pos.bottom === 'number') {
-        fab.style.right = pos.right + 'px';
-        fab.style.bottom = pos.bottom + 'px';
+      if (
+        pos &&
+        typeof pos.right === 'number' &&
+        typeof pos.bottom === 'number'
+      ) {
+        fab.style.right = `${pos.right}px`;
+        fab.style.bottom = `${pos.bottom}px`;
       }
     });
 
-    let startX = 0, startY = 0, startRight = 16, startBottom = 16;
+    let startX = 0,
+      startY = 0,
+      startRight = 16,
+      startBottom = 16;
     const onMove = (e) => {
       const dx = e.clientX - startX;
       const dy = e.clientY - startY;
       const newRight = Math.max(0, startRight - dx);
       const newBottom = Math.max(0, startBottom - dy);
-      fab.style.right = newRight + 'px';
-      fab.style.bottom = newBottom + 'px';
+      fab.style.right = `${newRight}px`;
+      fab.style.bottom = `${newBottom}px`;
     };
     const onUp = () => {
       document.removeEventListener('mousemove', onMove, true);
@@ -336,14 +343,19 @@ function renderFab() {
       } catch {}
     };
 
-    fab.addEventListener('mousedown', (e) => {
-      if (e.button !== 0) return; // left click only for drag
-      startX = e.clientX; startY = e.clientY;
-      startRight = parseInt(fab.style.right || '16', 10) || 16;
-      startBottom = parseInt(fab.style.bottom || '16', 10) || 16;
-      document.addEventListener('mousemove', onMove, true);
-      document.addEventListener('mouseup', onUp, true);
-    }, true);
+    fab.addEventListener(
+      'mousedown',
+      (e) => {
+        if (e.button !== 0) return; // left click only for drag
+        startX = e.clientX;
+        startY = e.clientY;
+        startRight = parseInt(fab.style.right || '16', 10) || 16;
+        startBottom = parseInt(fab.style.bottom || '16', 10) || 16;
+        document.addEventListener('mousemove', onMove, true);
+        document.addEventListener('mouseup', onUp, true);
+      },
+      true
+    );
 
     fab.addEventListener('click', (e) => {
       // If the user dragged, suppress click by checking small movement could be complex; keep simple.
@@ -372,7 +384,11 @@ function renderOverlay() {
       return;
     }
     if (!currentVideoId) return;
-    if (!Array.isArray(cachedVideoTimestamps) || cachedVideoTimestamps.length === 0) return;
+    if (
+      !Array.isArray(cachedVideoTimestamps) ||
+      cachedVideoTimestamps.length === 0
+    )
+      return;
 
     const panel = document.createElement('div');
     panel.className = 'ytb-overlay-panel';
@@ -431,13 +447,20 @@ function renderOverlay() {
 
     // Drag support and position persistence
     const handle = panel.querySelector('.drag-handle');
-    let startX = 0, startY = 0, startRight = 16, startBottom = 80;
+    let startX = 0,
+      startY = 0,
+      startRight = 16,
+      startBottom = 80;
     try {
       chrome.storage.local.get('overlayPos', (res) => {
         const pos = res.overlayPos;
-        if (pos && typeof pos.right === 'number' && typeof pos.bottom === 'number') {
-          panel.style.right = pos.right + 'px';
-          panel.style.bottom = pos.bottom + 'px';
+        if (
+          pos &&
+          typeof pos.right === 'number' &&
+          typeof pos.bottom === 'number'
+        ) {
+          panel.style.right = `${pos.right}px`;
+          panel.style.bottom = `${pos.bottom}px`;
         }
       });
     } catch {}
@@ -446,8 +469,8 @@ function renderOverlay() {
       const dy = e.clientY - startY;
       const newRight = Math.max(0, startRight - dx);
       const newBottom = Math.max(0, startBottom - dy);
-      panel.style.right = newRight + 'px';
-      panel.style.bottom = newBottom + 'px';
+      panel.style.right = `${newRight}px`;
+      panel.style.bottom = `${newBottom}px`;
     };
     const onUp = () => {
       document.removeEventListener('mousemove', onMove, true);
@@ -458,13 +481,18 @@ function renderOverlay() {
         chrome.storage.local.set({ overlayPos: { right, bottom } });
       } catch {}
     };
-    handle?.addEventListener('mousedown', (e) => {
-      startX = e.clientX; startY = e.clientY;
-      startRight = parseInt(panel.style.right || '16', 10) || 16;
-      startBottom = parseInt(panel.style.bottom || '80', 10) || 80;
-      document.addEventListener('mousemove', onMove, true);
-      document.addEventListener('mouseup', onUp, true);
-    }, true);
+    handle?.addEventListener(
+      'mousedown',
+      (e) => {
+        startX = e.clientX;
+        startY = e.clientY;
+        startRight = parseInt(panel.style.right || '16', 10) || 16;
+        startBottom = parseInt(panel.style.bottom || '80', 10) || 80;
+        document.addEventListener('mousemove', onMove, true);
+        document.addEventListener('mouseup', onUp, true);
+      },
+      true
+    );
 
     panel.addEventListener('click', (e) => {
       const target = e.target;
@@ -475,9 +503,12 @@ function renderOverlay() {
         if (video && !Number.isNaN(t)) video.currentTime = t;
       } else if (target.classList.contains('del')) {
         const id = target.getAttribute('data-id');
-        chrome.runtime.sendMessage({ type: 'DELETE_BOOKMARK', bookmarkId: id }, () => {
-          loadVideoTimestamps();
-        });
+        chrome.runtime.sendMessage(
+          { type: 'DELETE_BOOKMARK', bookmarkId: id },
+          () => {
+            loadVideoTimestamps();
+          }
+        );
       }
     });
 
@@ -778,7 +809,10 @@ try {
   window.addEventListener('yt-navigate-finish', initialize);
   window.addEventListener('load', initialize);
   chrome.storage.onChanged.addListener((changes, ns) => {
-    if (ns === 'local' && (changes.timpstamp_bookmarks || changes.multiTimestamps)) {
+    if (
+      ns === 'local' &&
+      (changes.timpstamp_bookmarks || changes.multiTimestamps)
+    ) {
       loadVideoTimestamps();
     }
   });
@@ -790,46 +824,59 @@ try {
   });
 
   // Alt+[ / Alt+] navigation across saved timestamps
-  document.addEventListener('keydown', (e) => {
-    try {
-      if (!overlayEnabled) return;
-      if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
-      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.isContentEditable)) return;
-      if (e.key !== '[' && e.key !== ']') return;
+  document.addEventListener(
+    'keydown',
+    (e) => {
+      try {
+        if (!overlayEnabled) return;
+        if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+        if (
+          e.target &&
+          (e.target.tagName === 'INPUT' ||
+            e.target.tagName === 'TEXTAREA' ||
+            e.target.isContentEditable)
+        )
+          return;
+        if (e.key !== '[' && e.key !== ']') return;
 
-      const video = findVideoElement();
-      if (!video || !currentVideoId) return;
-      const now = Math.floor(video.currentTime || 0);
-      const times = (cachedVideoTimestamps || [])
-        .map((b) => b.timestamp)
-        .sort((a, b) => a - b);
-      if (times.length === 0) return;
+        const video = findVideoElement();
+        if (!video || !currentVideoId) return;
+        const now = Math.floor(video.currentTime || 0);
+        const times = (cachedVideoTimestamps || [])
+          .map((b) => b.timestamp)
+          .sort((a, b) => a - b);
+        if (times.length === 0) return;
 
-      if (e.key === '[') {
-        // prev
-        let prev = null;
-        for (const t of times) {
-          if (t < now) prev = t;
-          else break;
+        if (e.key === '[') {
+          // prev
+          let prev = null;
+          for (const t of times) {
+            if (t < now) prev = t;
+            else break;
+          }
+          if (prev != null) {
+            video.currentTime = prev;
+            showNotification(`Jumped to ${fmt(prev)}`);
+            e.preventDefault();
+          }
+        } else if (e.key === ']') {
+          // next
+          let next = null;
+          for (const t of times) {
+            if (t > now) {
+              next = t;
+              break;
+            }
+          }
+          if (next != null) {
+            video.currentTime = next;
+            showNotification(`Jumped to ${fmt(next)}`);
+            e.preventDefault();
+          }
         }
-        if (prev != null) {
-          video.currentTime = prev;
-          showNotification(`Jumped to ${fmt(prev)}`);
-          e.preventDefault();
-        }
-      } else if (e.key === ']') {
-        // next
-        let next = null;
-        for (const t of times) {
-          if (t > now) { next = t; break; }
-        }
-        if (next != null) {
-          video.currentTime = next;
-          showNotification(`Jumped to ${fmt(next)}`);
-          e.preventDefault();
-        }
-      }
-    } catch {}
-  }, true);
+      } catch {}
+    },
+    true
+  );
   initialize();
 } catch (_error) {}
