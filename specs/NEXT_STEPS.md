@@ -20,7 +20,7 @@ Last updated: 2025-09-09
 - [ ] Virtualized list in popup
   - [x] Replace pagination with chunked group virtualization + infinite scroll
   - [x] Incremental rendering inside large groups (chunked load + sentinel)
-  - [ ] True windowing (unmount off‑screen items) for very large groups
+  - [x] True windowing (unmount off‑screen items) for very large groups
   - [ ] Perf test with 5k+ timestamps; tune chunk size and thresholds
   - Acceptance: lists feel fast with 5k+ timestamps
 - [x] Tag chips — global filters
