@@ -1,6 +1,11 @@
 // Constants for storage
 const BOOKMARKS_KEY = 'timpstamp_bookmarks'; // Single key for all bookmarks
-const SETTINGS_KEYS = ['shortcutEnabled', 'darkModeEnabled', 'multiTimestamps', 'overlayEnabled'];
+const SETTINGS_KEYS = [
+  'shortcutEnabled',
+  'darkModeEnabled',
+  'multiTimestamps',
+  'overlayEnabled',
+];
 
 // Initialize storage
 chrome.runtime.onInstalled.addListener(() => {
@@ -19,12 +24,18 @@ chrome.runtime.onInstalled.addListener(() => {
       }
       // Migrate settings if absent locally
       for (const key of SETTINGS_KEYS) {
-        if (typeof localData[key] === 'undefined' && typeof syncData[key] !== 'undefined') {
+        if (
+          typeof localData[key] === 'undefined' &&
+          typeof syncData[key] !== 'undefined'
+        ) {
           toSetLocal[key] = syncData[key];
         }
       }
       // Ensure defaults
-      if (typeof toSetLocal.shortcutEnabled === 'undefined' && typeof localData.shortcutEnabled === 'undefined') {
+      if (
+        typeof toSetLocal.shortcutEnabled === 'undefined' &&
+        typeof localData.shortcutEnabled === 'undefined'
+      ) {
         toSetLocal.shortcutEnabled = true;
       }
       if (Object.keys(toSetLocal).length > 0) {
@@ -93,7 +104,10 @@ async function getAllBookmarks(maxRetries = 3) {
       });
 
       // If some bookmarks were invalid, save the cleaned version
-      if (validBookmarks.length !== bookmarks.length && validBookmarks.length >= 0) {
+      if (
+        validBookmarks.length !== bookmarks.length &&
+        validBookmarks.length >= 0
+      ) {
         await chrome.storage.local.set({ [BOOKMARKS_KEY]: validBookmarks });
       }
 
@@ -117,11 +131,15 @@ async function checkAndCleanupStorage(bookmarks) {
   try {
     const bytesInUse = await chrome.storage.local.getBytesInUse();
     const maxBytes = chrome.storage.local.QUOTA_BYTES || 5 * 1024 * 1024;
-    const estimated = bytesInUse + JSON.stringify({ [BOOKMARKS_KEY]: bookmarks }).length;
+    const estimated =
+      bytesInUse + JSON.stringify({ [BOOKMARKS_KEY]: bookmarks }).length;
     if (estimated > maxBytes * 0.95) {
       // Soft warning by trimming only if absolutely necessary: keep most recent 500
       const trimmed = [...bookmarks]
-        .sort((a, b) => (b.savedAt || b.createdAt || 0) - (a.savedAt || a.createdAt || 0))
+        .sort(
+          (a, b) =>
+            (b.savedAt || b.createdAt || 0) - (a.savedAt || a.createdAt || 0)
+        )
         .slice(0, 500);
       return trimmed;
     }
@@ -191,7 +209,9 @@ async function handleAddBookmark(bookmarkData, sendResponse) {
     const computedId = multi
       ? `${videoIdForBookmark}:${bookmarkData.timestamp}`
       : videoIdForBookmark;
-    const existingBookmarkIndex = bookmarks.findIndex((b) => b.id === computedId);
+    const existingBookmarkIndex = bookmarks.findIndex(
+      (b) => b.id === computedId
+    );
 
     if (existingBookmarkIndex !== -1) {
       // Update existing bookmark (only minimal fields)
@@ -229,8 +249,8 @@ async function handleAddBookmark(bookmarkData, sendResponse) {
           existingBookmarkIndex !== -1
             ? 'Timestamp updated! 🎉'
             : multi
-            ? 'Timestamp added! 🎉'
-            : 'Timestamp saved! 🎉',
+              ? 'Timestamp added! 🎉'
+              : 'Timestamp saved! 🎉',
       });
     } catch (saveError) {
       const userMessage = handleStorageError(saveError, 'save bookmark');
@@ -314,7 +334,7 @@ async function handleUpdateBookmarkNotes(bookmarkId, notes, sendResponse) {
 }
 
 // Cleanup old bookmarks to free up storage space
-async function cleanupOldBookmarks(bookmarks) {
+async function _cleanupOldBookmarks(bookmarks) {
   if (bookmarks.length <= 50) {
     return bookmarks;
   }

@@ -48,7 +48,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       status.textContent = 'Saved.';
     } finally {
       saveBtn.disabled = false;
-      setTimeout(() => (status.textContent = ''), 1200);
+      setTimeout(() => {
+        status.textContent = '';
+      }, 1200);
     }
   });
 });
