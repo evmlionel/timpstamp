@@ -175,8 +175,8 @@ document.addEventListener('DOMContentLoaded', () => {
   let isLoading = false;
   // Group virtualization
   const GROUPS_CHUNK_SIZE = 25;
-  const GROUP_ITEMS_CHUNK_SIZE = 60; // items per render inside a group (non-virtualized)
-  const VIRTUALIZE_THRESHOLD = 300; // switch to windowing above this many items
+  const GROUP_ITEMS_CHUNK_SIZE = 80; // items per render inside a group (non-virtualized)
+  const VIRTUALIZE_THRESHOLD = 200; // switch to windowing above this many items
   const VIRTUAL_OVERSCAN = 20; // extra items above/below viewport
   let groupsOrdered = [];
   let groupsRendered = 0;
