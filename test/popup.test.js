@@ -148,7 +148,9 @@ describe('Popup Script', () => {
         shortcutToggle.checked = settingResult.shortcutEnabled !== false;
         darkModeToggle.checked = settingResult.darkModeEnabled || false;
 
-        const result = await mockChrome.storage.local.get('timpstamp_bookmarks');
+        const result = await mockChrome.storage.local.get(
+          'timpstamp_bookmarks'
+        );
         const bookmarks = result.timpstamp_bookmarks || [];
 
         loadingState.style.display = 'none';
@@ -169,7 +171,9 @@ describe('Popup Script', () => {
     });
 
     it('should handle error when loading data fails', async () => {
-      mockChrome.storage.local.get.mockRejectedValue(new Error('Storage error'));
+      mockChrome.storage.local.get.mockRejectedValue(
+        new Error('Storage error')
+      );
 
       const loadAllData = async () => {
         try {
@@ -235,7 +239,9 @@ describe('Popup Script', () => {
       });
 
       const exportBookmarks = async () => {
-        const result = await mockChrome.storage.local.get('timpstamp_bookmarks');
+        const result = await mockChrome.storage.local.get(
+          'timpstamp_bookmarks'
+        );
         const bookmarks = result.timpstamp_bookmarks || [];
 
         if (bookmarks.length === 0) {
@@ -481,6 +487,81 @@ describe('Popup Script', () => {
       expect(alphabetical[0].videoTitle).toBe('Alpha Video');
       expect(alphabetical[1].videoTitle).toBe('Beta Video');
       expect(alphabetical[2].videoTitle).toBe('Charlie Video');
+    });
+  });
+
+  describe('Tag Chips Filters', () => {
+    it('should aggregate top tags with counts', () => {
+      const allBookmarks = [
+        { id: '1', tags: ['study', 'clip'] },
+        { id: '2', tags: ['study'] },
+        { id: '3', tags: ['clip', 'ux'] },
+        { id: '4', tags: [] },
+        { id: '5' },
+      ];
+
+      const computeTagCounts = (bookmarks) => {
+        const counts = new Map();
+        for (const b of bookmarks) {
+          for (const t of b.tags || []) {
+            const key = String(t).toLowerCase();
+            counts.set(key, (counts.get(key) || 0) + 1);
+          }
+        }
+        return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+      };
+
+      const top = computeTagCounts(allBookmarks);
+      expect(top[0]).toEqual(['study', 2]);
+      expect(top[1]).toEqual(['clip', 2]);
+      expect(top[2]).toEqual(['ux', 1]);
+    });
+
+    it('should filter by active tag chips (AND semantics)', () => {
+      const allBookmarks = [
+        { id: '1', videoTitle: 'A', tags: ['study', 'clip'] },
+        { id: '2', videoTitle: 'B', tags: ['study'] },
+        { id: '3', videoTitle: 'C', tags: ['clip', 'ux'] },
+        { id: '4', videoTitle: 'D', tags: [] },
+      ];
+
+      const filterByTags = (bookmarks, active) => {
+        if (active.size === 0) return bookmarks;
+        return bookmarks.filter((b) => {
+          const tags = new Set((b.tags || []).map((t) => String(t).toLowerCase()));
+          for (const t of active) if (!tags.has(t)) return false;
+          return true;
+        });
+      };
+
+      const active = new Set(['study']);
+      let filtered = filterByTags(allBookmarks, active);
+      expect(filtered.map((b) => b.id)).toEqual(['1', '2']);
+
+      active.add('clip');
+      filtered = filterByTags(allBookmarks, active);
+      expect(filtered.map((b) => b.id)).toEqual(['1']);
+
+      active.clear();
+      filtered = filterByTags(allBookmarks, active);
+      expect(filtered).toHaveLength(4);
+    });
+
+    it('should clear filters (search, favorites, tags)', () => {
+      let searchTerm = 'abc';
+      let favoritesOnly = true;
+      const activeTagFilters = new Set(['study']);
+
+      const clear = () => {
+        searchTerm = '';
+        favoritesOnly = false;
+        activeTagFilters.clear();
+      };
+
+      clear();
+      expect(searchTerm).toBe('');
+      expect(favoritesOnly).toBe(false);
+      expect(activeTagFilters.size).toBe(0);
     });
   });
 });
