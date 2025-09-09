@@ -782,6 +782,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const thumbnailImg = div.querySelector('.thumbnail');
     const thumbnailPlaceholder = div.querySelector('.thumbnail-placeholder');
     thumbnailImg.onerror = () => {
+      // Fallback to CSP-safer hqdefault.jpg once; otherwise show placeholder
+      if (!thumbnailImg.dataset.fallbackTried) {
+        thumbnailImg.dataset.fallbackTried = '1';
+        thumbnailImg.src = `https://i.ytimg.com/vi/${bookmark.videoId}/hqdefault.jpg`;
+        return;
+      }
       thumbnailImg.style.display = 'none';
       thumbnailPlaceholder.style.display = 'block';
     };
