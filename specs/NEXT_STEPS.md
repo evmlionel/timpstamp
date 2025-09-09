@@ -20,8 +20,17 @@ Last updated: 2025-09-09
 - [ ] Virtualized list in popup
   - [x] Replace pagination with chunked group virtualization + infinite scroll
   - [x] Incremental rendering inside large groups (chunked load + sentinel)
-  - [x] True windowing (unmount off‑screen items) for very large groups
-  - [ ] Perf test with 5k+ timestamps; tune chunk size and thresholds
+- [x] True windowing (unmount off‑screen items) for very large groups
+- [x] Perf test with 5k+ timestamps; tune chunk size and thresholds
+  - Results (jsdom synthetic):
+    - Largest group in sample: 200 items
+    - Naive render 200: ~11ms; chunked 200: ~8ms
+    - Virtualized overscan 10: ~0.9ms init, ~0.9ms update (19–29 nodes)
+    - Virtualized overscan 20: ~0.8–1.4ms (29–49 nodes) — smoother margin
+  - Decisions:
+    - GROUP_ITEMS_CHUNK_SIZE = 80
+    - VIRTUALIZE_THRESHOLD = 200
+    - VIRTUAL_OVERSCAN = 20
   - Acceptance: lists feel fast with 5k+ timestamps
 - [x] Tag chips — global filters
   - [x] Show top tags above list with counts
