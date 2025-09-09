@@ -81,6 +81,82 @@ document.addEventListener('DOMContentLoaded', () => {
     );
   }
 
+  // --- Virtualization (true windowing) for very large groups ---
+  function enableGroupVirtualization(videoId, container) {
+    const topSpacer = document.createElement('div');
+    const mount = document.createElement('div');
+    const bottomSpacer = document.createElement('div');
+    topSpacer.className = 'group-virt-spacer top';
+    bottomSpacer.className = 'group-virt-spacer bottom';
+    mount.className = 'group-virt-mount';
+    container.innerHTML = '';
+    container.appendChild(topSpacer);
+    container.appendChild(mount);
+    container.appendChild(bottomSpacer);
+
+    groupVirtual.set(videoId, {
+      enabled: true,
+      itemHeight: 0,
+      mount,
+      topSpacer,
+      bottomSpacer,
+    });
+
+    renderGroupWindow(videoId, container, true);
+    const handler = () => renderGroupWindow(videoId, container, false);
+    window.addEventListener('scroll', handler, { passive: true });
+    window.addEventListener('resize', handler, { passive: true });
+    container.__virtHandler = handler;
+  }
+
+  function computeItemHeight(mount) {
+    const first = mount.querySelector('.bookmark-card');
+    if (first) return Math.max(1, first.getBoundingClientRect().height);
+    return 96;
+  }
+
+  function renderGroupWindow(videoId, container, isInitial) {
+    const virt = groupVirtual.get(videoId);
+    if (!virt?.enabled) return;
+    const items = groupItems.get(videoId) || [];
+    const rect = container.getBoundingClientRect();
+    const vh = window.innerHeight || 800;
+
+    const baseH = Math.max(1, virt.itemHeight || 96);
+    const startIdx = Math.max(
+      0,
+      Math.floor((0 - rect.top) / baseH) - VIRTUAL_OVERSCAN
+    );
+    const endIdx = Math.min(
+      items.length,
+      Math.ceil((vh - rect.top) / baseH) + VIRTUAL_OVERSCAN
+    );
+
+    if (isInitial && !virt.itemHeight) {
+      virt.mount.innerHTML = '';
+      const sampleEnd = Math.min(startIdx + 5, items.length);
+      for (let i = startIdx; i < sampleEnd; i++) {
+        virt.mount.appendChild(createBookmarkElement(items[i]));
+      }
+      virt.itemHeight = computeItemHeight(virt.mount) || baseH;
+    }
+
+    const itemH = Math.max(1, virt.itemHeight || baseH);
+    const s = Math.max(0, startIdx);
+    const e = Math.max(s, endIdx);
+
+    virt.topSpacer.style.height = `${s * itemH}px`;
+    virt.bottomSpacer.style.height = `${Math.max(0, items.length - e) * itemH}px`;
+
+    const desiredKey = `${s}:${e}`;
+    if (virt.mount.__rangeKey === desiredKey && !isInitial) return;
+    virt.mount.__rangeKey = desiredKey;
+    virt.mount.innerHTML = '';
+    for (let i = s; i < e; i++) {
+      virt.mount.appendChild(createBookmarkElement(items[i]));
+    }
+  }
+
   function updateClearFiltersVisibility() {
     if (!clearFiltersBtn) return;
     clearFiltersBtn.style.display = filtersActive() ? 'inline-block' : 'none';
@@ -99,13 +175,16 @@ document.addEventListener('DOMContentLoaded', () => {
   let isLoading = false;
   // Group virtualization
   const GROUPS_CHUNK_SIZE = 25;
-  const GROUP_ITEMS_CHUNK_SIZE = 60; // items per render inside a group
+  const GROUP_ITEMS_CHUNK_SIZE = 60; // items per render inside a group (non-virtualized)
+  const VIRTUALIZE_THRESHOLD = 300; // switch to windowing above this many items
+  const VIRTUAL_OVERSCAN = 20; // extra items above/below viewport
   let groupsOrdered = [];
   let groupsRendered = 0;
   let onScrollHandler = null;
   const lazyObserver = setupLazyLoading();
   const groupItems = new Map(); // videoId -> items array
   const groupRenderedCount = new Map(); // videoId -> rendered count
+  const groupVirtual = new Map(); // videoId -> { enabled, itemHeight, mount, topSpacer, bottomSpacer }
   const groupObserver =
     typeof IntersectionObserver !== 'undefined'
       ? new IntersectionObserver(
@@ -121,7 +200,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 groupObserver.unobserve(el);
               } catch {}
               el.remove();
-              renderMoreInGroup(vid, body);
+              if (!groupVirtual.get(vid)?.enabled) {
+                renderMoreInGroup(vid, body);
+              }
             }
           },
           { rootMargin: '200px' }
@@ -621,8 +702,12 @@ document.addEventListener('DOMContentLoaded', () => {
       g.items.sort((a, b) => a.timestamp - b.timestamp);
       groupItems.set(vid, g.items);
       groupRenderedCount.set(vid, 0);
-      // Render initial chunk inside the group body
-      renderMoreInGroup(vid, body, GROUP_ITEMS_CHUNK_SIZE);
+      if (g.items.length >= VIRTUALIZE_THRESHOLD) {
+        enableGroupVirtualization(vid, body);
+      } else {
+        // Render initial chunk inside the group body
+        renderMoreInGroup(vid, body, GROUP_ITEMS_CHUNK_SIZE);
+      }
       const header = card.querySelector('.group-header');
       header.addEventListener('click', async (e) => {
         if (e.target && e.target.classList.contains('pin-btn')) return;
@@ -662,6 +747,7 @@ document.addEventListener('DOMContentLoaded', () => {
     container,
     count = GROUP_ITEMS_CHUNK_SIZE
   ) {
+    if (groupVirtual.get(videoId)?.enabled) return; // virtualization handles rendering
     const items = groupItems.get(videoId) || [];
     const already = groupRenderedCount.get(videoId) || 0;
     const next = Math.min(already + count, items.length);
