@@ -15,7 +15,8 @@
     "check:fix": "biome check --write .",
     "check:staged": "biome check --changed",
     "check:staged:fix": "biome check --changed --write",
-    "ci": "biome check . && vitest run"
+    "ci": "biome check . && vitest run",
+    "perf:gen": "bun scripts/generate-sample-bookmarks.mjs > sample-bookmarks.json"
   },
   "keywords": [
     "chrome-extension",
