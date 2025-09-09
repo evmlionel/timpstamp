@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Run Biome on changed files before committing. Requires bun.
+if ! command -v bun >/dev/null 2>&1; then
+  echo "[pre-commit] bun is not installed. Install bun or adjust this hook." >&2
+  exit 1
+fi
+
+# Collect staged files we care about
+STAGED_LIST=$(git diff --cached --name-only --diff-filter=ACM | rg -N '\\.(?:[jt]sx?|json|css|md)$' || true)
+if [ -z "$STAGED_LIST" ]; then exit 0; fi
+
+echo "[pre-commit] Running Biome on staged files…"
+if ! bun x biome check --write $STAGED_LIST; then
+  echo "[pre-commit] Biome reported issues. Please fix and re-stage." >&2
+  exit 1
+fi
+
+# Re-add any files that Biome modified
+git add -- $STAGED_LIST
+
+echo "[pre-commit] Biome passed. Proceeding with commit."
+exit 0

@@ -4,7 +4,7 @@ This document tracks the agreed next steps and backlog for improving the
 extension. It complements `specs/DEVELOPMENT_ROADMAP.md` and focuses on
 upcoming, user‑visible work items.
 
-Last updated: 2025-09-08
+Last updated: 2025-09-09
 
 ## Goals
 - Make the popup manager frictionless for large collections
@@ -18,13 +18,14 @@ Last updated: 2025-09-08
   - [x] Persist minimized/hidden state per user
   - Acceptance: user can hide/show overlay without Options page
 - [ ] Virtualized list in popup
-  - [ ] Replace current pagination with virtualization (windowed rows)
-  - [ ] Maintain grouping by video and smooth scrolling
+  - [x] Replace pagination with chunked group virtualization + infinite scroll
+  - [ ] Windowing inside large groups (very long per‑video lists)
+  - [ ] Perf test with 5k+ timestamps; tune chunk size and thresholds
   - Acceptance: lists feel fast with 5k+ timestamps
-- [ ] Tag chips — global filters
-  - [ ] Show top tags above list with counts
-  - [ ] Click to add/remove filters; show active filters
-  - [ ] “Clear filters” resets search + favorites + tags
+- [x] Tag chips — global filters
+  - [x] Show top tags above list with counts
+  - [x] Click to add/remove filters; show active filters
+  - [x] “Clear filters” resets search + favorites + tags
   - Acceptance: user can filter down to a subset in 1–2 clicks
 
 ## Medium Priority
@@ -54,6 +55,12 @@ Last updated: 2025-09-08
 - [ ] Storage wrappers everywhere (done in popup) — extend to background if needed
 - [ ] Guard against Promise‑less storage on older Chromium builds
 - [ ] CSP‑safe images (thumbnails) — fall back to `hqdefault.jpg` if needed
+
+## Tooling
+- [x] Package manager declaration in `package.json` (`packageManager: bun@1.2.21`)
+- [x] Pre‑commit hook: Biome check on changed files (added under `.githooks/`)
+- [ ] CI: GitHub Actions (bun install, Biome check, Vitest run)
+- [ ] README: document bun usage and common dev scripts
 
 ## Testing
 - [ ] Unit tests
@@ -86,6 +93,8 @@ Last updated: 2025-09-08
   - Favorites filter (moved to the right), instant star feedback
   - Thumbnails fixed for Brave; copy title+time action
   - Chip‑style tags with inline add/remove; “Clear filters” pill
+  - Global tag chips with counts + click‑to‑filter (top bar)
+  - Chunked group virtualization with infinite scroll (replaces pagination)
 - Overlay UX:
   - Draggable with persisted position, minimize/expand with persistence
 - Brave/Chromium resilience: callback‑based storage wrappers in popup

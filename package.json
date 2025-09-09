@@ -2,6 +2,7 @@
   "name": "youtube-timestamp-bookmarker",
   "version": "1.0.0",
   "description": "A Chrome extension to bookmark YouTube timestamps",
+  "packageManager": "bun@1.2.21",
   "scripts": {
     "test": "vitest",
     "test:ui": "vitest --ui",
@@ -11,7 +12,10 @@
     "format": "biome format .",
     "format:fix": "biome format --write .",
     "check": "biome check .",
-    "check:fix": "biome check --write ."
+    "check:fix": "biome check --write .",
+    "check:staged": "biome check --changed",
+    "check:staged:fix": "biome check --changed --write",
+    "ci": "biome check . && vitest run"
   },
   "keywords": [
     "chrome-extension",
