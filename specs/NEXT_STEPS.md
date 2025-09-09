@@ -60,7 +60,7 @@ Last updated: 2025-09-09
 - [x] Package manager declaration in `package.json` (`packageManager: bun@1.2.21`)
 - [x] Pre‑commit hook: Biome check on changed files (added under `.githooks/`)
 - [ ] CI: GitHub Actions (bun install, Biome check, Vitest run)
-- [ ] README: document bun usage and common dev scripts
+- [x] README: document bun usage and common dev scripts
 
 ## Testing
 - [ ] Unit tests
