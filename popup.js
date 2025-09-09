@@ -99,10 +99,34 @@ document.addEventListener('DOMContentLoaded', () => {
   let isLoading = false;
   // Group virtualization
   const GROUPS_CHUNK_SIZE = 25;
+  const GROUP_ITEMS_CHUNK_SIZE = 60; // items per render inside a group
   let groupsOrdered = [];
   let groupsRendered = 0;
   let onScrollHandler = null;
   const lazyObserver = setupLazyLoading();
+  const groupItems = new Map(); // videoId -> items array
+  const groupRenderedCount = new Map(); // videoId -> rendered count
+  const groupObserver =
+    typeof IntersectionObserver !== 'undefined'
+      ? new IntersectionObserver(
+          (entries) => {
+            for (const entry of entries) {
+              if (!entry.isIntersecting) continue;
+              const el = entry.target;
+              const vid = el.getAttribute('data-video-id');
+              if (!vid) continue;
+              const body = el.parentElement;
+              if (!body) continue;
+              try {
+                groupObserver.unobserve(el);
+              } catch {}
+              el.remove();
+              renderMoreInGroup(vid, body);
+            }
+          },
+          { rootMargin: '200px' }
+        )
+      : null;
 
   async function loadAllData() {
     try {
@@ -595,10 +619,10 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
       const body = card.querySelector('.group-body');
       g.items.sort((a, b) => a.timestamp - b.timestamp);
-      g.items.forEach((bookmark) => {
-        const el = createBookmarkElement(bookmark);
-        body.appendChild(el);
-      });
+      groupItems.set(vid, g.items);
+      groupRenderedCount.set(vid, 0);
+      // Render initial chunk inside the group body
+      renderMoreInGroup(vid, body, GROUP_ITEMS_CHUNK_SIZE);
       const header = card.querySelector('.group-header');
       header.addEventListener('click', async (e) => {
         if (e.target && e.target.classList.contains('pin-btn')) return;
@@ -631,6 +655,43 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     bookmarksList.appendChild(frag);
     groupsRendered = end;
+  }
+
+  function renderMoreInGroup(
+    videoId,
+    container,
+    count = GROUP_ITEMS_CHUNK_SIZE
+  ) {
+    const items = groupItems.get(videoId) || [];
+    const already = groupRenderedCount.get(videoId) || 0;
+    const next = Math.min(already + count, items.length);
+    if (already >= next) return;
+
+    const frag = document.createDocumentFragment();
+    for (let i = already; i < next; i++) {
+      const el = createBookmarkElement(items[i]);
+      frag.appendChild(el);
+    }
+    // Remove any existing load-more sentinel
+    container.querySelector('.group-load-more')?.remove();
+    container.appendChild(frag);
+    groupRenderedCount.set(videoId, next);
+
+    if (next < items.length) {
+      const more = document.createElement('button');
+      more.type = 'button';
+      more.className = 'group-load-more';
+      more.setAttribute('data-video-id', videoId);
+      more.textContent = `Load more (${items.length - next} remaining)`;
+      more.addEventListener('click', (e) => {
+        e.preventDefault();
+        renderMoreInGroup(videoId, container);
+      });
+      container.appendChild(more);
+      try {
+        groupObserver?.observe(more);
+      } catch {}
+    }
   }
 
   function renderTagChips() {
