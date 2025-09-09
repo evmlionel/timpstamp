@@ -74,10 +74,10 @@ Last updated: 2025-09-09
 
 ## Testing
 - [ ] Unit tests
-  - [ ] Popup: favorites UI state (pressed overrides hover)
+  - [x] Popup: favorites UI state (pressed overrides hover)
   - [ ] Overlay: minimize/hide state persistence
   - [x] Tag chips: filter toggle + clear behavior
-  - [ ] Tag chips: backspace behavior in input
+  - [x] Tag chips: backspace behavior in input
 - [ ] E2E (optional)
   - [ ] Puppeteer/Playwright script to save timestamps and validate popup
   - [ ] Brave run to validate storage + CSP quirks
