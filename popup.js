@@ -49,6 +49,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const importFile = document.getElementById('importFile');
   const optionsBtn = document.getElementById('optionsBtn');
   const favoritesFilterBtn = document.getElementById('favoritesFilterBtn');
+  const titleButton = document.getElementById('main-title');
+  const shortcutModal = document.getElementById('shortcutModal');
+  const shortcutModalClose = document.getElementById('shortcutModalClose');
   const selectModeBtn = document.getElementById('selectModeBtn');
   const bulkActions = document.getElementById('bulkActions');
   const selectedCount = document.getElementById('selectedCount');
@@ -65,13 +68,13 @@ document.addEventListener('DOMContentLoaded', () => {
   let isSelectMode = false;
   const selectedBookmarks = new Set();
   let favoritesOnly = false;
-  let pinnedVideos = new Set();
   let expandedGroups = new Set();
   const activeTagFilters = new Set();
   const clearFiltersBtn = document.getElementById('clearFiltersBtn');
   const tagChipsContainer = document.getElementById('tagChips');
   let isEditingTags = false;
   let isComposing = false;
+  let lastFocusEl = null;
 
   function filtersActive() {
     return (
@@ -164,8 +167,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const updateFavoritesButtonLabel = () => {
     try {
       const count = allBookmarks.filter((b) => b.favorite).length;
-      favoritesFilterBtn.title = `Show favorites only${count ? ` (${count})` : ''}`;
-      favoritesFilterBtn.setAttribute('aria-label', favoritesFilterBtn.title);
+      const title = `Show favorites only${count ? ` (${count})` : ''}`;
+      favoritesFilterBtn.title = title;
+      favoritesFilterBtn.setAttribute('aria-label', title);
     } catch {}
   };
 
@@ -215,7 +219,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const settingResult = await storageGet([
         'shortcutEnabled',
         'darkModeEnabled',
-        'pinnedVideos',
         'expandedGroups',
       ]);
       if (shortcutToggle)
@@ -223,7 +226,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const darkValue = settingResult.darkModeEnabled || false;
       if (darkModeToggle) darkModeToggle.checked = darkValue;
       applyTheme(darkValue);
-      pinnedVideos = new Set(settingResult.pinnedVideos || []);
       expandedGroups = new Set(settingResult.expandedGroups || []);
 
       // Apply theme (handled above)
@@ -290,6 +292,54 @@ document.addEventListener('DOMContentLoaded', () => {
       searchInput.focus();
     });
   }
+
+  function resetFiltersToDefault() {
+    searchInput.value = '';
+    favoritesOnly = false;
+    favoritesFilterBtn.setAttribute('aria-pressed', 'false');
+    activeTagFilters.clear();
+    currentSort = 'newest';
+    if (sortSelect) sortSelect.value = 'newest';
+    sortAndRenderBookmarks();
+    updateClearFiltersVisibility();
+    renderTagChips();
+    updateFavoritesButtonLabel();
+  }
+
+  if (titleButton) {
+    titleButton.addEventListener('click', () => {
+      resetFiltersToDefault();
+      searchInput.focus();
+    });
+    titleButton.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        resetFiltersToDefault();
+        searchInput.focus();
+      }
+    });
+  }
+
+  function openShortcutHelp() {
+    if (!shortcutModal) return;
+    lastFocusEl = document.activeElement;
+    shortcutModal.classList.add('show');
+    shortcutModal.setAttribute('aria-hidden', 'false');
+    // Focus close button
+    shortcutModalClose?.focus();
+  }
+  function closeShortcutHelp() {
+    if (!shortcutModal) return;
+    shortcutModal.classList.remove('show');
+    shortcutModal.setAttribute('aria-hidden', 'true');
+    if (lastFocusEl && lastFocusEl.focus) lastFocusEl.focus();
+  }
+  shortcutModalClose?.addEventListener('click', () => closeShortcutHelp());
+  shortcutModal?.addEventListener('click', (e) => {
+    if (e.target && e.target.classList?.contains('modal-backdrop')) {
+      closeShortcutHelp();
+    }
+  });
 
   if (shortcutToggle) {
     shortcutToggle.addEventListener('change', (e) => {
@@ -639,19 +689,12 @@ document.addEventListener('DOMContentLoaded', () => {
       g.items.push(b);
       groups.set(b.videoId, g);
     }
-    // Sort groups: pinned first, then newest savedAt
+    // Sort groups by newest savedAt in group
     groupsOrdered = [...groups.entries()].sort((a, b) => {
-      const aPinned = pinnedVideos.has(a[0]);
-      const bPinned = pinnedVideos.has(b[0]);
-      if (aPinned !== bPinned) return aPinned ? -1 : 1;
       const A = a[1];
       const B = b[1];
-      const aMax = Math.max(
-        ...A.items.map((x) => x.savedAt || x.createdAt || 0)
-      );
-      const bMax = Math.max(
-        ...B.items.map((x) => x.savedAt || x.createdAt || 0)
-      );
+      const aMax = Math.max(...A.items.map((x) => x.savedAt || x.createdAt || 0));
+      const bMax = Math.max(...B.items.map((x) => x.savedAt || x.createdAt || 0));
       return bMax - aMax;
     });
 
@@ -684,17 +727,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const [vid, g] = groupsOrdered[i];
       const card = document.createElement('div');
       card.className = 'group-card';
-      const isPinned = pinnedVideos.has(vid);
       card.innerHTML = `
         <div class="group-header" data-video-id="${vid}">
           <div class="group-title">
             <div class="video" title="${g.videoTitle}">${g.videoTitle}</div>
             <div class="channel">${g.channelTitle || ''}</div>
           </div>
-          <div>
-            <button class="pin-btn" aria-pressed="${isPinned ? 'true' : 'false'}" title="Pin group" aria-label="Pin group">📌</button>
-            <span>(${g.items.length})</span>
-          </div>
+          <div><span>(${g.items.length})</span></div>
         </div>
         <div class="group-body" style="display:none;"></div>
       `;
@@ -729,8 +768,7 @@ document.addEventListener('DOMContentLoaded', () => {
           await storageSet({ expandedGroups: [...expandedGroups] });
         } catch {}
       };
-      header.addEventListener('click', async (e) => {
-        if (e.target && e.target.classList.contains('pin-btn')) return;
+      header.addEventListener('click', async () => {
         await toggleGroup();
       });
       header.addEventListener('keydown', async (e) => {
@@ -739,18 +777,7 @@ document.addEventListener('DOMContentLoaded', () => {
           await toggleGroup();
         }
       });
-      const pinBtn = card.querySelector('.pin-btn');
-      pinBtn.addEventListener('click', async (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const pressed = pinBtn.getAttribute('aria-pressed') === 'true';
-        const next = !pressed;
-        pinBtn.setAttribute('aria-pressed', String(next));
-        if (next) pinnedVideos.add(vid);
-        else pinnedVideos.delete(vid);
-        await chrome.storage.local.set({ pinnedVideos: [...pinnedVideos] });
-        sortAndRenderBookmarks();
-      });
+      // Removed group pinning to simplify UX
       if (g.items.length <= 3 || expandedGroups.has(vid)) {
         body.style.display = 'block';
       }
@@ -837,6 +864,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     tagChipsContainer.style.display = top.length ? 'flex' : 'none';
   }
+
+  // (filter bar removed to simplify UI)
 
   // Render a single page of bookmarks
   function renderBookmarkPage() {
@@ -1034,6 +1063,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const idx = allBookmarks.findIndex((b) => b.id === id);
       if (idx >= 0) allBookmarks[idx].favorite = toggled;
       // Instant visual + feedback
+      try { updateFavoritesButtonLabel(); } catch {}
       showNotification(
         toggled ? 'Added to favorites' : 'Removed from favorites',
         'success',
@@ -1387,12 +1417,35 @@ document.addEventListener('DOMContentLoaded', () => {
         break;
       case 'Escape':
         e.preventDefault();
-        selectedBookmarkIndex = -1;
-        updateSelection();
+        if (shortcutModal?.classList?.contains('show')) {
+          closeShortcutHelp();
+        } else {
+          selectedBookmarkIndex = -1;
+          updateSelection();
+        }
         break;
       case '/':
         e.preventDefault();
-        searchInput.focus();
+        if (e.shiftKey) openShortcutHelp();
+        else searchInput.focus();
+        break;
+      case '?':
+        e.preventDefault();
+        openShortcutHelp();
+        break;
+      case 't':
+      case 'T':
+        e.preventDefault();
+        if (selectedBookmarkIndex >= 0) {
+          const card = bookmarkCards()[selectedBookmarkIndex];
+          const input = card?.querySelector('.tag-input');
+          if (input) {
+            input.focus();
+            // place cursor at end
+            const val = input.value;
+            input.setSelectionRange(val.length, val.length);
+          }
+        }
         break;
     }
   });

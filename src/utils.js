@@ -28,7 +28,7 @@ export const formatTime = (seconds) => {
 };
 
 // Show notification
-export const showNotification = (message, type = 'success') => {
+export const showNotification = (message, type = 'success', liveRegion) => {
   const notification = document.createElement('div');
   notification.style.cssText = `
     position: fixed;
@@ -51,6 +51,15 @@ export const showNotification = (message, type = 'success') => {
 
   notification.innerHTML = `${type === 'success' ? '✓' : '✕'} ${message}`;
   document.body.appendChild(notification);
+
+  // Update an aria-live region if provided for screen readers
+  try {
+    if (liveRegion && liveRegion.setAttribute) {
+      liveRegion.setAttribute('aria-live', 'polite');
+      liveRegion.setAttribute('aria-atomic', 'true');
+      liveRegion.textContent = message;
+    }
+  } catch {}
 
   setTimeout(() => {
     if (notification.parentNode) {

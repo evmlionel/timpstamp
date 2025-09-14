@@ -76,6 +76,26 @@ body {
   margin-bottom: 16px;
 }
 
+/* Ensure header top row layout */
+.header-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+#main-title {
+  font-size: 18px;
+  line-height: 1.2;
+  margin: 0;
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 2px 4px;
+}
+#main-title:focus {
+  outline: 2px solid var(--focus, #2563eb);
+  outline-offset: 2px;
+}
+
 .header-top-row {
   display: flex;
   justify-content: space-between;
@@ -151,6 +171,61 @@ h2 {
   width: 18px;
   height: 18px;
 }
+
+/* Modal (shortcuts) */
+.modal { display: none; }
+.modal.show { display: block; }
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+}
+.modal-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 340px;
+  max-width: calc(100% - 32px);
+  background: var(--surface, #fff);
+  color: var(--text, #111827);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  z-index: 1000;
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px 6px;
+  border-bottom: 1px solid var(--border, #e5e7eb);
+}
+.modal-header h2 { font-size: 16px; margin: 0; }
+.modal-close {
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+.modal-body { padding: 8px 12px 12px; }
+.shortcut-list { margin: 0; padding-left: 18px; }
+.shortcut-list li { margin: 6px 0; }
+.shortcut-list kbd {
+  display: inline-block;
+  min-width: 1.2em;
+  padding: 0 6px;
+  border: 1px solid #d1d5db;
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: #f8fafc;
+  box-shadow: inset 0 -1px 0 #e5e7eb;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+}
+
+/* (removed filter bar styles to simplify UI) */
 
 .keyboard-shortcut {
   display: flex;

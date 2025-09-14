@@ -2,9 +2,9 @@
 
 ## Project Status Overview
 
-**Current State**: ✅ All priority and medium tasks completed - Extension ready for production  
-**Last Updated**: 2025-07-04  
-**Version**: 1.0.0  
+**Current State**: ✅ v1.0 production‑ready; v1.2 UI/UX revamp planned  
+**Last Updated**: 2025-09-14  
+**Version**: 1.0.0 (v1.2 in progress planning)  
 
 ### Recent Achievements
 - ✅ Fixed critical DPI scaling issues on Windows machines
@@ -19,7 +19,9 @@
 - ✅ Added performance optimizations for large bookmark collections
 
 ### 🎯 Development Roadmap Summary
-**MAJOR MILESTONE ACHIEVED**: All priority and medium tasks from the development roadmap have been successfully completed. The extension has evolved from basic functionality to a robust, accessible, and performant application ready for production use.
+**MAJOR MILESTONE ACHIEVED (v1.0)**: All priority and medium tasks completed. The extension is robust, accessible, and performant.
+
+**NEXT PHASE (v1.2)**: UI/UX revamp per specs/UI_IMPROVEMENTS.md to deliver a keyboard‑first, progressive‑disclosure popup with a simple Favorites‑only workflow (no pinning), and crisp timestamp management.
 
 **Key Metrics**:
 - **Test Coverage**: 41 comprehensive tests across all components ✅
@@ -30,7 +32,7 @@
 
 ---
 
-## ✅ COMPLETED Priority Tasks
+## ✅ COMPLETED Priority Tasks (v1.0)
 
 ### 🔥 Priority 1: Critical Infrastructure ✅ COMPLETED
 
@@ -236,6 +238,39 @@ async function saveAllBookmarks(bookmarks, maxRetries = 3) {
 
 ---
 
+## 🚧 In Progress / Planned: UI & UX Revamp (v1.2)
+
+Source of truth: `specs/UI_IMPROVEMENTS.md`
+
+### Scope
+- Header redesign: title (reset), centered search, right‑side actions (Sort ▾, Favorites‑only, Import/Export, Settings)
+- Card redesign: collapsed scan view → expandable timestamps
+- Timestamps: inline actions (Open, Copy URL, Copy MD), inline edit, Undo delete
+- Keyboard‑first: '/', Enter, Arrow keys, 't', '?', Esc; visible focus
+- Tags model: chips + token input with autocomplete; optional AND/OR advanced mode later
+- Toasts & states: aria‑live toasts; empty states; first‑run tips
+- A11y: list/listitem roles; aria‑pressed for favorites, aria‑expanded for groups; focus management
+- Performance: windowed list; 120 ms debounce; diacritic‑insensitive search; precomputed lowercase fields
+
+### Acceptance Criteria (v1.2)
+- Popup interactive in < 300 ms with ~1k items (virtualized)
+- 100% functionality via keyboard with visible focus
+- Undo for destructive actions; no dead‑ends
+- Dark/light themes with WCAG AA; respects reduced motion
+- No horizontal scroll; graceful truncation
+
+### Risks & Mitigations (v1.2)
+- Keyboard model complexity → centralize shortcut map; add cheatsheet modal
+- Virtualization edge cases with dynamic heights → measure or fixed row height per timestamp row; overscan tuning
+
+### Release Plan (v1.2)
+- Alpha behind feature flag in popup
+- Beta build for manual testing (Chrome, Brave; high‑contrast mode)
+- Docs update (README screenshots; keyboard shortcuts)
+- Store release notes and version bump to 1.2.x
+
+---
+
 ## Future Enhancements (v1.1+)
 
 ### 🚀 Feature Expansions
@@ -275,14 +310,14 @@ async function saveAllBookmarks(bookmarks, maxRetries = 3) {
 
 ### Technical Metrics
 - **Test Coverage**: Target 90%+ code coverage
-- **Performance**: <200ms popup load time
+- **Performance**: <300 ms to interactive with ~1k items; windowed list
 - **Reliability**: <1% error rate in telemetry
 - **Compatibility**: Works on 95%+ of supported browsers
 
 ### User Experience Metrics
-- **Accessibility**: WCAG 2.1 AA compliance
-- **Usability**: <3 clicks to common operations
-- **Performance**: No noticeable lag with 500+ bookmarks
+- **Accessibility**: WCAG 2.1 AA compliance; visible focus everywhere
+- **Usability**: 0–1 click or Enter to open a timestamp; '/' focuses search
+- **Performance**: Smooth scrolling and operations with large collections (virtualized)
 
 ---
 
