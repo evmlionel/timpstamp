@@ -52,7 +52,13 @@
           </div>
         </div>
       </div>
-      <div class="header-meta"><span id="headerCounts" aria-live="polite"></span></div>
+      <div class="header-meta">
+        <div class="header-actions">
+          <button id="expandAllBtn" class="meta-btn" aria-label="Expand all groups">Expand all</button>
+          <button id="collapseAllBtn" class="meta-btn" aria-label="Collapse all groups">Collapse all</button>
+        </div>
+        <span id="headerCounts" aria-live="polite"></span>
+      </div>
       <!-- Settings toggles moved to Options page to declutter popup -->
       <div id="bulkActions" class="bulk-actions" style="display: none;" role="toolbar" aria-label="Bulk actions for selected bookmarks">
         <span id="selectedCount" class="selected-count" aria-live="polite">0 selected</span>

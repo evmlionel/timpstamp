@@ -41,6 +41,23 @@ v1.1
 4. Sort using the dropdown menu
 5. Click timestamps to jump to that moment
 6. Delete individual bookmarks or use "Clear All"
+7. Use favorites-only filter via the star button
+8. Click the title to reset search/filters/sort
+
+### Keyboard Shortcuts
+- `/` Focus search
+- `Shift + /` or `?` Open shortcuts help
+- `↑/↓` Navigate items
+- `Enter` Open selected
+- `Backspace/Delete` Delete selected
+- `t` Edit tags on selected
+- `Esc` Close dialogs or clear selection
+
+Tip: The header shows counts (videos · timestamps). “Expand all/Collapse all” lets you review timestamps quickly.
+
+### Copying Links
+- Copy a direct link to a timestamp via the share icon
+- Copy a Markdown link via the “MD” icon (includes time and optional notes)
 
 ### Settings
 - Toggle keyboard shortcut (B) on/off

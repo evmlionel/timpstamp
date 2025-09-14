@@ -56,6 +56,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const headerCounts = document.getElementById('headerCounts');
   const firstRun = document.getElementById('firstRun');
   const firstRunDismiss = document.getElementById('firstRunDismiss');
+  const expandAllBtn = document.getElementById('expandAllBtn');
+  const collapseAllBtn = document.getElementById('collapseAllBtn');
   const selectModeBtn = document.getElementById('selectModeBtn');
   const bulkActions = document.getElementById('bulkActions');
   const selectedCount = document.getElementById('selectedCount');
@@ -442,6 +444,36 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Shortcuts button opens modal
   shortcutBtn?.addEventListener('click', () => openShortcutHelp());
+
+  // Expand/Collapse all groups
+  async function expandAllGroups() {
+    try {
+      // Mark all to expand, including those not yet rendered
+      expandedGroups = new Set((groupsOrdered || []).map(([vid]) => vid));
+      // Apply to visible ones
+      document.querySelectorAll('.group-card .group-body').forEach((el) => {
+        el.style.display = 'block';
+      });
+      document.querySelectorAll('.group-card .group-header').forEach((h) =>
+        h.setAttribute('aria-expanded', 'true')
+      );
+      await storageSet({ expandedGroups: [...expandedGroups] });
+    } catch {}
+  }
+  async function collapseAllGroups() {
+    try {
+      expandedGroups = new Set();
+      document.querySelectorAll('.group-card .group-body').forEach((el) => {
+        el.style.display = 'none';
+      });
+      document.querySelectorAll('.group-card .group-header').forEach((h) =>
+        h.setAttribute('aria-expanded', 'false')
+      );
+      await storageSet({ expandedGroups: [] });
+    } catch {}
+  }
+  expandAllBtn?.addEventListener('click', () => expandAllGroups());
+  collapseAllBtn?.addEventListener('click', () => collapseAllGroups());
 
   async function exportBookmarks() {
     try {
@@ -1047,6 +1079,9 @@ document.addEventListener('DOMContentLoaded', () => {
               <button class="share-btn icon-btn" data-url="${bookmark.url}" title="Copy link to clipboard">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92zM18 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM6 13c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm12 7.02c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z" fill="currentColor"/></svg>
               </button>
+              <button class="copy-md-btn icon-btn" data-bookmark-id="${bookmarkId}" title="Copy Markdown link">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 3h18a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm2 4v10h14V7H5zm3 2h2.5l1.5 2 1.5-2H16v6h-2V11l-2 3-2-3v4H8V9z"/></svg>
+              </button>
               <button class="favorite-btn icon-btn" data-bookmark-id="${bookmarkId}" title="Toggle favorite" aria-pressed="${bookmark.favorite ? 'true' : 'false'}">
                   <!-- Outline star (shown when not favorited) -->
                   <svg class="star-outline" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -1097,6 +1132,21 @@ document.addEventListener('DOMContentLoaded', () => {
         showNotification('Link copied!', 'success', notificationArea);
       } catch (_err) {
         showNotification('Failed to copy link', 'error', notificationArea);
+      }
+    });
+
+    const copyMdBtn = div.querySelector('.copy-md-btn');
+    copyMdBtn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      try {
+        const url = `https://youtube.com/watch?v=${bookmark.videoId}&t=${bookmark.timestamp}s`;
+        const md = `[${bookmark.videoTitle || 'YouTube'} ${formatTime(bookmark.timestamp)}](${url})` +
+          (bookmark.notes ? ` — ${bookmark.notes}` : '');
+        await navigator.clipboard.writeText(md);
+        showNotification('Markdown copied!', 'success', notificationArea);
+      } catch (_err) {
+        showNotification('Failed to copy Markdown', 'error', notificationArea);
       }
     });
 
