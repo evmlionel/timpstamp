@@ -1497,6 +1497,13 @@ h2 {
   padding: 10px 12px;
   cursor: pointer;
 }
+.group-header:hover {
+  background: var(--bg-secondary);
+}
+.group-header:focus-visible {
+  outline: 2px solid var(--focus, #2563eb);
+  outline-offset: 2px;
+}
 .group-header .pin-btn {
   background: transparent;
   border: none;

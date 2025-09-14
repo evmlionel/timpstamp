@@ -1076,13 +1076,13 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="bookmark-meta">
           <span class="saved-date">Saved: ${new Date(bookmark.savedAt || bookmark.createdAt).toLocaleDateString()}</span>
           <div class="bookmark-actions">
-              <button class="share-btn icon-btn" data-url="${bookmark.url}" title="Copy link to clipboard">
+              <button class="share-btn icon-btn" data-url="${bookmark.url}" title="Copy link to clipboard" aria-label="Copy link to clipboard">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92zM18 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM6 13c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm12 7.02c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z" fill="currentColor"/></svg>
               </button>
-              <button class="copy-md-btn icon-btn" data-bookmark-id="${bookmarkId}" title="Copy Markdown link">
+              <button class="copy-md-btn icon-btn" data-bookmark-id="${bookmarkId}" title="Copy Markdown link" aria-label="Copy Markdown link">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 3h18a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zm2 4v10h14V7H5zm3 2h2.5l1.5 2 1.5-2H16v6h-2V11l-2 3-2-3v4H8V9z"/></svg>
               </button>
-              <button class="favorite-btn icon-btn" data-bookmark-id="${bookmarkId}" title="Toggle favorite" aria-pressed="${bookmark.favorite ? 'true' : 'false'}">
+              <button class="favorite-btn icon-btn" data-bookmark-id="${bookmarkId}" title="Toggle favorite" aria-label="Toggle favorite" aria-pressed="${bookmark.favorite ? 'true' : 'false'}">
                   <!-- Outline star (shown when not favorited) -->
                   <svg class="star-outline" width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M12 17.27L5.82 21l1.64-7.03L2 9.24l7.19-.61L12 2l2.81 6.63 7.19.61-5.46 4.73L18.18 21 12 17.27z" stroke="currentColor" stroke-width="2" stroke-linejoin="round" />
@@ -1092,7 +1092,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
                   </svg>
               </button>
-              <button class="delete-btn icon-btn" data-bookmark-id="${bookmarkId}" title="Delete timestamp">
+              <button class="delete-btn icon-btn" data-bookmark-id="${bookmarkId}" title="Delete timestamp" aria-label="Delete timestamp">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
               </button>
           </div>
@@ -1503,6 +1503,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const cards = bookmarkCards();
     if (cards.length === 0) return;
+
+    // Simple key chord for group actions: 'g' then 'e'/'c'
+    window.__chord = window.__chord || { active: false, t: 0 };
+    const now = Date.now();
+    if (window.__chord.active && now - window.__chord.t > 1500) {
+      window.__chord.active = false; // timeout
+    }
+    if (!window.__chord.active && (e.key === 'g' || e.key === 'G')) {
+      window.__chord = { active: true, t: now };
+      e.preventDefault();
+      return;
+    } else if (window.__chord.active && (e.key === 'e' || e.key === 'E')) {
+      e.preventDefault();
+      window.__chord.active = false;
+      expandAllGroups();
+      return;
+    } else if (window.__chord.active && (e.key === 'c' || e.key === 'C')) {
+      e.preventDefault();
+      window.__chord.active = false;
+      collapseAllGroups();
+      return;
+    }
 
     switch (e.key) {
       case 'ArrowDown':
