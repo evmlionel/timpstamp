@@ -52,6 +52,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const titleButton = document.getElementById('main-title');
   const shortcutModal = document.getElementById('shortcutModal');
   const shortcutModalClose = document.getElementById('shortcutModalClose');
+  const shortcutBtn = document.getElementById('shortcutBtn');
+  const headerCounts = document.getElementById('headerCounts');
+  const firstRun = document.getElementById('firstRun');
+  const firstRunDismiss = document.getElementById('firstRunDismiss');
   const selectModeBtn = document.getElementById('selectModeBtn');
   const bulkActions = document.getElementById('bulkActions');
   const selectedCount = document.getElementById('selectedCount');
@@ -75,6 +79,14 @@ document.addEventListener('DOMContentLoaded', () => {
   let isEditingTags = false;
   let isComposing = false;
   let lastFocusEl = null;
+
+  // Diacritic-insensitive normalizer
+  function normalizeStr(s) {
+    return String(s || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+  }
 
   function filtersActive() {
     return (
@@ -220,6 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'shortcutEnabled',
         'darkModeEnabled',
         'expandedGroups',
+        'firstRunDismissedV1',
       ]);
       if (shortcutToggle)
         shortcutToggle.checked = settingResult.shortcutEnabled !== false;
@@ -234,14 +247,26 @@ document.addEventListener('DOMContentLoaded', () => {
       const result = await storageGet('timpstamp_bookmarks');
       const bookmarks = result.timpstamp_bookmarks || [];
 
-      // Store bookmarks in global variable
+      // Precompute normalized fields for search (diacritic-insensitive)
+      for (const b of bookmarks) {
+        b._title_lc = normalizeStr(b.videoTitle || '');
+        b._notes_lc = normalizeStr(b.notes || '');
+        b._tags_lc = normalizeStr((b.tags || []).join(' '));
+      }
       allBookmarks = bookmarks;
       updateFavoritesButtonLabel();
       renderTagChips();
-
+      
       // Update UI
       loadingState.style.display = 'none';
       sortAndRenderBookmarks(); // Sort and render the bookmarks
+
+      // First run panel when no bookmarks and not dismissed
+      try {
+        const none = (allBookmarks || []).length === 0;
+        const dismissed = settingResult.firstRunDismissedV1 === true;
+        if (firstRun) firstRun.style.display = none && !dismissed ? 'block' : 'none';
+      } catch {}
     } catch (_error) {
       loadingState.style.display = 'none';
       emptyState.textContent = 'Error loading bookmarks. Please try again.';
@@ -341,6 +366,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // First-run dismiss
+  firstRunDismiss?.addEventListener('click', async () => {
+    try {
+      await storageSet({ firstRunDismissedV1: true });
+      if (firstRun) firstRun.style.display = 'none';
+    } catch {}
+  });
+
   if (shortcutToggle) {
     shortcutToggle.addEventListener('change', (e) => {
       chrome.storage.local.set({ shortcutEnabled: e.target.checked });
@@ -353,6 +386,20 @@ document.addEventListener('DOMContentLoaded', () => {
       chrome.storage.local.set({ darkModeEnabled: isDark });
       applyTheme(isDark);
     });
+  }
+
+  // Header counts updater
+  function updateHeaderCounts() {
+    try {
+      // Use current filtered view if available
+      const videos = new Set();
+      for (const b of filteredBookmarks.length ? filteredBookmarks : allBookmarks) {
+        if (b.videoId) videos.add(b.videoId);
+      }
+      const v = videos.size;
+      const t = (filteredBookmarks.length ? filteredBookmarks : allBookmarks).length;
+      if (headerCounts) headerCounts.textContent = `${v} videos · ${t} timestamps`;
+    } catch {}
   }
 
   optionsBtn.addEventListener('click', () => {
@@ -373,6 +420,7 @@ document.addEventListener('DOMContentLoaded', () => {
     favoritesFilterBtn.setAttribute('aria-pressed', String(favoritesOnly));
     sortAndRenderBookmarks();
     updateClearFiltersVisibility();
+    updateHeaderCounts();
   });
 
   // Export/Import functionality
@@ -391,6 +439,9 @@ document.addEventListener('DOMContentLoaded', () => {
       e.target.value = ''; // Reset file input
     }
   });
+
+  // Shortcuts button opens modal
+  shortcutBtn?.addEventListener('click', () => openShortcutHelp());
 
   async function exportBookmarks() {
     try {
@@ -635,7 +686,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderBookmarks() {
     if (isLoading) return;
 
-    const searchTerm = searchInput.value.toLowerCase();
+    const searchTerm = normalizeStr(searchInput.value);
 
     // Filter bookmarks
     filteredBookmarks = allBookmarks.filter((bookmark) => {
@@ -649,8 +700,9 @@ document.addEventListener('DOMContentLoaded', () => {
           if (!tags.has(t)) return false;
         }
       }
-      const hay =
-        `${bookmark.videoTitle || ''} ${bookmark.notes || ''} ${(bookmark.tags || []).join(' ')}`.toLowerCase();
+      const hay = `${bookmark._title_lc || ''} ${bookmark._notes_lc || ''} ${
+        bookmark._tags_lc || ''
+      }`;
       return hay.includes(searchTerm);
     });
 
@@ -714,6 +766,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     };
     window.addEventListener('scroll', onScrollHandler, { passive: true });
+    updateHeaderCounts();
   }
 
   function renderNextGroupChunk() {
@@ -727,6 +780,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const [vid, g] = groupsOrdered[i];
       const card = document.createElement('div');
       card.className = 'group-card';
+      const bodyId = `group-body-${CSS.escape(vid)}`;
       card.innerHTML = `
         <div class="group-header" data-video-id="${vid}">
           <div class="group-title">
@@ -735,7 +789,7 @@ document.addEventListener('DOMContentLoaded', () => {
           </div>
           <div><span>(${g.items.length})</span></div>
         </div>
-        <div class="group-body" style="display:none;"></div>
+        <div id="${bodyId}" class="group-body" style="display:none;" role="list"></div>
       `;
       const body = card.querySelector('.group-body');
       g.items.sort((a, b) => a.timestamp - b.timestamp);
@@ -755,6 +809,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'aria-expanded',
         g.items.length <= 3 || expandedGroups.has(vid) ? 'true' : 'false'
       );
+      header.setAttribute('aria-controls', bodyId);
       const toggleGroup = async () => {
         const open = body.style.display !== 'none';
         body.style.display = open ? 'none' : 'block';
@@ -957,6 +1012,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let sortAndRenderBookmarks = () => {
     allBookmarks = sortBookmarks(allBookmarks, currentSort);
     renderBookmarks();
+    updateHeaderCounts();
   };
 
   // createBookmarkElement function remains largely the same but will be appended directly
@@ -965,6 +1021,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const thumbnailUrl = `https://i.ytimg.com/vi/${bookmark.videoId}/mqdefault.jpg`;
     const div = document.createElement('div');
     div.className = 'bookmark-card';
+    div.setAttribute('role', 'listitem');
     const bookmarkId = bookmark.id;
 
     div.dataset.bookmarkId = bookmarkId;
@@ -1101,7 +1158,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   searchInput.addEventListener(
     'input',
-    debounce(() => sortAndRenderBookmarks(), 300)
+    debounce(() => sortAndRenderBookmarks(), 120)
   );
 
   // Prevent global key handlers when editing tags, and add Enter to blur
