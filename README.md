@@ -52,6 +52,8 @@ v1.1
 - `Backspace/Delete` Delete selected
 - `t` Edit tags on selected
 - `Esc` Close dialogs or clear selection
+- `g` then `e` Expand all groups
+- `g` then `c` Collapse all groups
 
 Tip: The header shows counts (videos · timestamps). “Expand all/Collapse all” lets you review timestamps quickly.
 
