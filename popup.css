@@ -129,6 +129,22 @@ h2 {
   color: #6b7280;
   font-size: 12px;
 }
+.header-meta { gap: 8px; align-items: center; }
+.header-meta #headerCounts { white-space: nowrap; }
+.header-actions { display: flex; gap: 8px; }
+.meta-btn {
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #374151;
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.meta-btn:focus { outline: 2px solid var(--focus, #2563eb); outline-offset: 2px; }
+
+/* Prevent background scroll when modal is open */
+body.modal-open { overflow: hidden; }
 
 .header-actions { display: flex; gap: 8px; }
 .meta-btn {
@@ -232,10 +248,10 @@ h2 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px 6px;
+  padding: 8px 10px 6px;
   border-bottom: 1px solid var(--border, #e5e7eb);
 }
-.modal-header h2 { font-size: 16px; margin: 0; }
+.modal-header h2 { font-size: 15px; margin: 0; }
 .modal-close {
   border: none;
   background: transparent;
@@ -243,7 +259,7 @@ h2 {
   line-height: 1;
   cursor: pointer;
 }
-.modal-body { padding: 8px 12px 12px; }
+.modal-body { padding: 8px 10px 10px; }
 .shortcut-list { margin: 0; padding-left: 18px; }
 .shortcut-list li { margin: 6px 0; }
 .shortcut-list kbd {

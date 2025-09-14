@@ -354,12 +354,16 @@ document.addEventListener('DOMContentLoaded', () => {
     shortcutModal.setAttribute('aria-hidden', 'false');
     // Focus close button
     shortcutModalClose?.focus();
+    document.body.classList.add('modal-open');
+    try { enableFocusTrap(shortcutModal); } catch {}
   }
   function closeShortcutHelp() {
     if (!shortcutModal) return;
     shortcutModal.classList.remove('show');
     shortcutModal.setAttribute('aria-hidden', 'true');
     if (lastFocusEl && lastFocusEl.focus) lastFocusEl.focus();
+    document.body.classList.remove('modal-open');
+    try { disableFocusTrap(shortcutModal); } catch {}
   }
   shortcutModalClose?.addEventListener('click', () => closeShortcutHelp());
   shortcutModal?.addEventListener('click', (e) => {
@@ -375,6 +379,46 @@ document.addEventListener('DOMContentLoaded', () => {
       if (firstRun) firstRun.style.display = 'none';
     } catch {}
   });
+
+  // --- Focus Trap Utilities for Modal ---
+  function getFocusableElements(container) {
+    const dialog = container.querySelector('.modal-dialog') || container;
+    const selectors = [
+      'a[href]','button:not([disabled])','input:not([disabled])','select:not([disabled])',
+      'textarea:not([disabled])','[tabindex]:not([tabindex="-1"])'
+    ].join(',');
+    const nodes = Array.from(dialog.querySelectorAll(selectors));
+    return nodes.filter((el) => el.offsetParent !== null || el === document.activeElement);
+  }
+  function handleTrapKeydown(e) {
+    if (e.key !== 'Tab') return;
+    const container = document.getElementById('shortcutModal');
+    const focusables = getFocusableElements(container);
+    if (focusables.length === 0) return;
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    if (e.shiftKey) {
+      if (document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else {
+      if (document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  }
+  function enableFocusTrap(container) {
+    container.__trapHandler = handleTrapKeydown;
+    document.addEventListener('keydown', handleTrapKeydown, true);
+  }
+  function disableFocusTrap(container) {
+    if (container.__trapHandler) {
+      document.removeEventListener('keydown', container.__trapHandler, true);
+      delete container.__trapHandler;
+    }
+  }
 
   if (shortcutToggle) {
     shortcutToggle.addEventListener('change', (e) => {
