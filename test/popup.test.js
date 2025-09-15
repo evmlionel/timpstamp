@@ -615,6 +615,7 @@ describe('Popup Script', () => {
       };
 
       // Simulate handler logic
+      /* biome-ignore lint/complexity/noExcessiveCognitiveComplexity: test simulates UI handler */
       const onKeyDown = async (e) => {
         const isComposing = false;
         if (

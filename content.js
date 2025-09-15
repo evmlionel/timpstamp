@@ -827,6 +827,7 @@ try {
   });
 
   // Alt+[ / Alt+] navigation across saved timestamps
+  /** Whether the event is Alt+[ or Alt+] with no other modifiers. */
   function isAltBracket(e) {
     return (
       !e.ctrlKey &&
@@ -836,6 +837,7 @@ try {
       (e.key === '[' || e.key === ']')
     );
   }
+  /** Input/textarea/contentEditable guard to avoid hijacking typing. */
   function isTypingTarget(target) {
     return (
       !!target &&
@@ -844,11 +846,13 @@ try {
         target.isContentEditable)
     );
   }
+  /** Sorted timestamps for current video overlay panel. */
   function sortedTimes() {
     return (cachedVideoTimestamps || [])
       .map((b) => b.timestamp)
       .sort((a, b) => a - b);
   }
+  /** Find the previous timestamp before `now`. */
   function findPrev(times, now) {
     let prev = null;
     for (const t of times) {
@@ -857,6 +861,7 @@ try {
     }
     return prev;
   }
+  /** Find the next timestamp after `now`. */
   function findNext(times, now) {
     for (const t of times) if (t > now) return t;
     return null;

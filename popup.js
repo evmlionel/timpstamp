@@ -133,6 +133,9 @@ document.addEventListener('DOMContentLoaded', () => {
     return 96;
   }
 
+  /**
+   * Compute visible [start,end) indices for a list window.
+   */
   function getViewportRange(rectTop, itemH, itemsLen) {
     const vh = window.innerHeight || 800;
     const start = Math.max(
@@ -146,6 +149,9 @@ document.addEventListener('DOMContentLoaded', () => {
     return [start, end];
   }
 
+  /**
+   * Measure approximate item height once using a small sample.
+   */
   function ensureItemHeight(virt, sampleStart, items) {
     if (virt.itemHeight) return Math.max(1, virt.itemHeight);
     virt.mount.innerHTML = '';
@@ -157,6 +163,9 @@ document.addEventListener('DOMContentLoaded', () => {
     return Math.max(1, virt.itemHeight);
   }
 
+  /**
+   * Apply virtual window by updating spacers and mounting children.
+   */
   function applyWindow(virt, items, s, e, itemH) {
     virt.topSpacer.style.height = `${s * itemH}px`;
     virt.bottomSpacer.style.height = `${Math.max(0, items.length - e) * itemH}px`;
@@ -785,6 +794,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchTerm = normalizeStr(searchInput.value);
 
     /* biome-ignore lint/complexity/noExcessiveCognitiveComplexity: compact multi-check predicate */
+    /** Check favorites, tags and text query against a bookmark. */
     function matchesFilters(bookmark, q) {
       if (favoritesOnly && !bookmark.favorite) return false;
       if (activeTagFilters.size > 0) {
@@ -981,6 +991,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
+  /** Return Map<tag, count> aggregated from bookmarks. */
   function aggregateTagCounts(bookmarks) {
     const counts = new Map();
     for (const b of bookmarks)
@@ -990,6 +1001,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     return counts;
   }
+  /** Create an interactive tag chip element. */
   function makeTagChip(tag, count) {
     const chip = document.createElement('button');
     chip.type = 'button';

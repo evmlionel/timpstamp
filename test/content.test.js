@@ -142,6 +142,7 @@ describe('Content Script', () => {
         }
       );
 
+      /* biome-ignore lint/complexity/noExcessiveCognitiveComplexity: test helper mirrors real branching */
       const saveTimestamp = () => {
         const video = document.querySelector('video');
         if (!video) {
