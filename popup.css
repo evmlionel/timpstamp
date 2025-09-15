@@ -35,29 +35,29 @@
   }
 
   button {
-    border: 2px solid !important;
+    border: 2px solid;
   }
 
   input {
-    border: 2px solid !important;
+    border: 2px solid;
   }
 }
 
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.01ms;
   }
 }
 
 /* Styles for the popup UI */
 body {
   font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  width: 400px !important;
-  min-width: 400px !important;
-  max-width: 400px !important;
+  width: 400px;
+  min-width: 400px;
+  max-width: 400px;
   height: auto;
   min-height: 200px;
   max-height: 600px;
@@ -210,10 +210,10 @@ body.modal-open {
 }
 /* Ensure pressed state wins over hover so feedback is instant */
 .favorite-btn[aria-pressed="true"]:hover {
-  color: #f59e0b !important;
+  color: #f59e0b;
 }
 .bookmark-actions .favorite-btn[aria-pressed="true"]:hover {
-  color: #f59e0b !important;
+  color: #f59e0b;
 }
 .favorite-btn .star-filled {
   display: none;
@@ -464,8 +464,8 @@ body.modal-open {
 }
 
 .thumbnail-container {
-  width: 80px !important;
-  height: 45px !important;
+  width: 80px;
+  height: 45px;
   flex-shrink: 0;
   position: relative;
   border-radius: 4px;
@@ -499,7 +499,7 @@ body.modal-open {
 
 .bookmark-details {
   flex: 1;
-  min-width: 200px !important;
+  min-width: 200px;
   width: calc(100% - 100px);
   display: flex;
   flex-direction: column;
@@ -509,11 +509,11 @@ body.modal-open {
 }
 
 .video-title {
-  font-size: 14px !important;
+  font-size: 14px;
   font-weight: 600;
   color: var(--text-primary);
   margin: 0 0 4px 0;
-  line-height: 1.3 !important;
+  line-height: 1.3;
   display: -webkit-box;
   -webkit-box-orient: vertical;
   overflow: hidden;
@@ -521,7 +521,7 @@ body.modal-open {
   -webkit-line-clamp: 2;
   line-clamp: 2;
   word-wrap: break-word;
-  max-height: 2.6em !important;
+  max-height: 2.6em;
   white-space: normal;
 }
 
@@ -567,7 +567,7 @@ body.modal-open {
 }
 /* But don't override favorite color when pressed */
 .favorite-btn[aria-pressed="true"]:hover {
-  color: #f59e0b !important;
+  color: #f59e0b;
 }
 
 [data-theme="dark"] .icon-btn:hover {
@@ -1407,9 +1407,9 @@ h2 {
 /* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.01ms;
   }
 
   .loading-spinner {
@@ -1424,8 +1424,8 @@ h2 {
 /* High DPI Display Support */
 @media (min-resolution: 144dpi) {
   .thumbnail-container {
-    width: 70px !important;
-    height: 40px !important;
+    width: 70px;
+    height: 40px;
   }
 
   .video-title {
@@ -1442,8 +1442,8 @@ h2 {
 /* Very High DPI Display Support */
 @media (min-resolution: 192dpi) {
   .thumbnail-container {
-    width: 65px !important;
-    height: 36px !important;
+    width: 65px;
+    height: 36px;
   }
 
   .video-title {

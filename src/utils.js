@@ -54,7 +54,7 @@ export const showNotification = (message, type = 'success', liveRegion) => {
 
   // Update an aria-live region if provided for screen readers
   try {
-    if (liveRegion && liveRegion.setAttribute) {
+    if (liveRegion?.setAttribute) {
       liveRegion.setAttribute('aria-live', 'polite');
       liveRegion.setAttribute('aria-atomic', 'true');
       liveRegion.textContent = message;

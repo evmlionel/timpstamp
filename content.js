@@ -827,59 +827,55 @@ try {
   });
 
   // Alt+[ / Alt+] navigation across saved timestamps
-  document.addEventListener(
-    'keydown',
-    (e) => {
-      try {
-        if (!overlayEnabled) return;
-        if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
-        if (
-          e.target &&
-          (e.target.tagName === 'INPUT' ||
-            e.target.tagName === 'TEXTAREA' ||
-            e.target.isContentEditable)
-        )
-          return;
-        if (e.key !== '[' && e.key !== ']') return;
+  function handleAltBracketNavigation(e) {
+    try {
+      if (!overlayEnabled) return;
+      if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      if (
+        e.target &&
+        (e.target.tagName === 'INPUT' ||
+          e.target.tagName === 'TEXTAREA' ||
+          e.target.isContentEditable)
+      )
+        return;
+      if (e.key !== '[' && e.key !== ']') return;
 
-        const video = findVideoElement();
-        if (!video || !currentVideoId) return;
-        const now = Math.floor(video.currentTime || 0);
-        const times = (cachedVideoTimestamps || [])
-          .map((b) => b.timestamp)
-          .sort((a, b) => a - b);
-        if (times.length === 0) return;
+      const video = findVideoElement();
+      if (!video || !currentVideoId) return;
+      const now = Math.floor(video.currentTime || 0);
+      const times = (cachedVideoTimestamps || [])
+        .map((b) => b.timestamp)
+        .sort((a, b) => a - b);
+      if (times.length === 0) return;
 
-        if (e.key === '[') {
-          // prev
-          let prev = null;
-          for (const t of times) {
-            if (t < now) prev = t;
-            else break;
-          }
-          if (prev != null) {
-            video.currentTime = prev;
-            showNotification(`Jumped to ${fmt(prev)}`);
-            e.preventDefault();
-          }
-        } else if (e.key === ']') {
-          // next
-          let next = null;
-          for (const t of times) {
-            if (t > now) {
-              next = t;
-              break;
-            }
-          }
-          if (next != null) {
-            video.currentTime = next;
-            showNotification(`Jumped to ${fmt(next)}`);
-            e.preventDefault();
+      if (e.key === '[') {
+        let prev = null;
+        for (const t of times) {
+          if (t < now) prev = t;
+          else break;
+        }
+        if (prev != null) {
+          video.currentTime = prev;
+          showNotification(`Jumped to ${fmt(prev)}`);
+          e.preventDefault();
+        }
+      } else if (e.key === ']') {
+        let next = null;
+        for (const t of times) {
+          if (t > now) {
+            next = t;
+            break;
           }
         }
-      } catch {}
-    },
-    true
-  );
+        if (next != null) {
+          video.currentTime = next;
+          showNotification(`Jumped to ${fmt(next)}`);
+          e.preventDefault();
+        }
+      }
+    } catch {}
+  }
+
+  document.addEventListener('keydown', handleAltBracketNavigation, true);
   initialize();
 } catch (_error) {}

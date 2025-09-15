@@ -51,13 +51,14 @@ describe('Popup Script', () => {
     container.innerHTML = mockHTML;
     document.body.appendChild(container);
 
-    // Mock document.getElementById to return our mock elements
-    const originalGetElementById = document.getElementById;
+    // Mock document.getElementById to return our mock elements without recursion
+    const originalGetElementById = document.getElementById.bind(document);
     document.getElementById = (id) => {
-      return (
-        container.querySelector(`#${id}`) ||
-        originalGetElementById.call(document, id)
-      );
+      try {
+        const list = container.querySelectorAll('[id]');
+        for (const el of list) if (el.id === id) return el;
+      } catch {}
+      return originalGetElementById(id);
     };
 
     vi.clearAllMocks();

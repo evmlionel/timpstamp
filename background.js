@@ -9,8 +9,36 @@ const SETTINGS_KEYS = [
 ];
 
 // Initialize storage
+function pickMigrationChanges(syncData, localData) {
+  const toSetLocal = {};
+  if (!localData[BOOKMARKS_KEY] && Array.isArray(syncData[BOOKMARKS_KEY])) {
+    toSetLocal[BOOKMARKS_KEY] = syncData[BOOKMARKS_KEY];
+  }
+  for (const key of SETTINGS_KEYS) {
+    if (
+      typeof localData[key] === 'undefined' &&
+      typeof syncData[key] !== 'undefined'
+    ) {
+      toSetLocal[key] = syncData[key];
+    }
+  }
+  if (
+    typeof toSetLocal.shortcutEnabled === 'undefined' &&
+    typeof localData.shortcutEnabled === 'undefined'
+  ) {
+    toSetLocal.shortcutEnabled = true;
+  }
+  return toSetLocal;
+}
+
+async function ensureBookmarksArray() {
+  const ensure = await chrome.storage.local.get(BOOKMARKS_KEY);
+  if (!Array.isArray(ensure[BOOKMARKS_KEY])) {
+    await chrome.storage.local.set({ [BOOKMARKS_KEY]: [] });
+  }
+}
+
 chrome.runtime.onInstalled.addListener(() => {
-  // One-time migration from sync -> local
   (async () => {
     try {
       const [syncData, localData] = await Promise.all([
@@ -18,47 +46,16 @@ chrome.runtime.onInstalled.addListener(() => {
         chrome.storage.local.get([BOOKMARKS_KEY, ...SETTINGS_KEYS]),
       ]);
 
-      const toSetLocal = {};
-      // Migrate bookmarks if local is empty but sync has data
-      if (!localData[BOOKMARKS_KEY] && Array.isArray(syncData[BOOKMARKS_KEY])) {
-        toSetLocal[BOOKMARKS_KEY] = syncData[BOOKMARKS_KEY];
-      }
-      // Migrate settings if absent locally
-      for (const key of SETTINGS_KEYS) {
-        if (
-          typeof localData[key] === 'undefined' &&
-          typeof syncData[key] !== 'undefined'
-        ) {
-          toSetLocal[key] = syncData[key];
-        }
-      }
-      // Ensure defaults
-      if (
-        typeof toSetLocal.shortcutEnabled === 'undefined' &&
-        typeof localData.shortcutEnabled === 'undefined'
-      ) {
-        toSetLocal.shortcutEnabled = true;
-      }
+      const toSetLocal = pickMigrationChanges(syncData, localData);
       if (Object.keys(toSetLocal).length > 0) {
         await chrome.storage.local.set(toSetLocal);
       }
-
-      // Ensure bookmarks key exists to simplify consumers
-      const ensure = await chrome.storage.local.get(BOOKMARKS_KEY);
-      if (!Array.isArray(ensure[BOOKMARKS_KEY])) {
-        await chrome.storage.local.set({ [BOOKMARKS_KEY]: [] });
-      }
+      await ensureBookmarksArray();
     } catch (_e) {
-      // Best-effort migration only
       await chrome.storage.local.set({ shortcutEnabled: true });
-      const ensure = await chrome.storage.local.get(BOOKMARKS_KEY);
-      if (!Array.isArray(ensure[BOOKMARKS_KEY])) {
-        await chrome.storage.local.set({ [BOOKMARKS_KEY]: [] });
-      }
+      await ensureBookmarksArray();
     }
   })();
-
-  // No keepAlive alarm; rely on MV3 event-driven lifecycle
 });
 
 // No keepAlive; MV3 is event-driven.
