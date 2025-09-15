@@ -133,46 +133,53 @@ document.addEventListener('DOMContentLoaded', () => {
     return 96;
   }
 
+  function getViewportRange(rectTop, itemH, itemsLen) {
+    const vh = window.innerHeight || 800;
+    const start = Math.max(
+      0,
+      Math.floor((0 - rectTop) / itemH) - VIRTUAL_OVERSCAN
+    );
+    const end = Math.min(
+      itemsLen,
+      Math.ceil((vh - rectTop) / itemH) + VIRTUAL_OVERSCAN
+    );
+    return [start, end];
+  }
+
+  function ensureItemHeight(virt, sampleStart, items) {
+    if (virt.itemHeight) return Math.max(1, virt.itemHeight);
+    virt.mount.innerHTML = '';
+    const sampleEnd = Math.min(sampleStart + 5, items.length);
+    for (let i = sampleStart; i < sampleEnd; i++) {
+      virt.mount.appendChild(createBookmarkElement(items[i]));
+    }
+    virt.itemHeight = computeItemHeight(virt.mount) || 96;
+    return Math.max(1, virt.itemHeight);
+  }
+
+  function applyWindow(virt, items, s, e, itemH) {
+    virt.topSpacer.style.height = `${s * itemH}px`;
+    virt.bottomSpacer.style.height = `${Math.max(0, items.length - e) * itemH}px`;
+    const desiredKey = `${s}:${e}`;
+    if (virt.mount.__rangeKey === desiredKey) return;
+    virt.mount.__rangeKey = desiredKey;
+    virt.mount.innerHTML = '';
+    for (let i = s; i < e; i++)
+      virt.mount.appendChild(createBookmarkElement(items[i]));
+  }
+
   function renderGroupWindow(videoId, container, isInitial) {
     const virt = groupVirtual.get(videoId);
     if (!virt?.enabled) return;
     const items = groupItems.get(videoId) || [];
     const rect = container.getBoundingClientRect();
-    const vh = window.innerHeight || 800;
-
     const baseH = Math.max(1, virt.itemHeight || 96);
-    const startIdx = Math.max(
-      0,
-      Math.floor((0 - rect.top) / baseH) - VIRTUAL_OVERSCAN
-    );
-    const endIdx = Math.min(
-      items.length,
-      Math.ceil((vh - rect.top) / baseH) + VIRTUAL_OVERSCAN
-    );
-
-    if (isInitial && !virt.itemHeight) {
-      virt.mount.innerHTML = '';
-      const sampleEnd = Math.min(startIdx + 5, items.length);
-      for (let i = startIdx; i < sampleEnd; i++) {
-        virt.mount.appendChild(createBookmarkElement(items[i]));
-      }
-      virt.itemHeight = computeItemHeight(virt.mount) || baseH;
-    }
-
-    const itemH = Math.max(1, virt.itemHeight || baseH);
+    const [startIdx, endIdx] = getViewportRange(rect.top, baseH, items.length);
+    const itemH = ensureItemHeight(virt, startIdx, items);
     const s = Math.max(0, startIdx);
     const e = Math.max(s, endIdx);
-
-    virt.topSpacer.style.height = `${s * itemH}px`;
-    virt.bottomSpacer.style.height = `${Math.max(0, items.length - e) * itemH}px`;
-
-    const desiredKey = `${s}:${e}`;
-    if (virt.mount.__rangeKey === desiredKey && !isInitial) return;
-    virt.mount.__rangeKey = desiredKey;
-    virt.mount.innerHTML = '';
-    for (let i = s; i < e; i++) {
-      virt.mount.appendChild(createBookmarkElement(items[i]));
-    }
+    if (!isInitial) virt.mount.__rangeKey = undefined; // allow update if sizes changed
+    applyWindow(virt, items, s, e, itemH);
   }
 
   function updateClearFiltersVisibility() {
@@ -204,74 +211,71 @@ document.addEventListener('DOMContentLoaded', () => {
   const groupItems = new Map(); // videoId -> items array
   const groupRenderedCount = new Map(); // videoId -> rendered count
   const groupVirtual = new Map(); // videoId -> { enabled, itemHeight, mount, topSpacer, bottomSpacer }
+  function onGroupIntersect(entries, observer) {
+    for (const entry of entries) {
+      if (!entry.isIntersecting) continue;
+      const el = entry.target;
+      const vid = el.getAttribute('data-video-id');
+      const body = el.parentElement;
+      if (!vid || !body) continue;
+      try {
+        observer.unobserve(el);
+      } catch {}
+      el.remove();
+      if (!groupVirtual.get(vid)?.enabled) renderMoreInGroup(vid, body);
+    }
+  }
   const groupObserver =
     typeof IntersectionObserver !== 'undefined'
       ? new IntersectionObserver(
-          (entries) => {
-            for (const entry of entries) {
-              if (!entry.isIntersecting) continue;
-              const el = entry.target;
-              const vid = el.getAttribute('data-video-id');
-              if (!vid) continue;
-              const body = el.parentElement;
-              if (!body) continue;
-              try {
-                groupObserver.unobserve(el);
-              } catch {}
-              el.remove();
-              if (!groupVirtual.get(vid)?.enabled) {
-                renderMoreInGroup(vid, body);
-              }
-            }
-          },
+          (entries) => onGroupIntersect(entries, groupObserver),
           { rootMargin: '200px' }
         )
       : null;
 
+  async function fetchSettings() {
+    return storageGet([
+      'shortcutEnabled',
+      'darkModeEnabled',
+      'expandedGroups',
+      'firstRunDismissedV1',
+    ]);
+  }
+  function applySettingsToUI(s) {
+    if (shortcutToggle) shortcutToggle.checked = s.shortcutEnabled !== false;
+    const darkValue = !!s.darkModeEnabled;
+    if (darkModeToggle) darkModeToggle.checked = darkValue;
+    applyTheme(darkValue);
+    expandedGroups = new Set(s.expandedGroups || []);
+  }
+  async function fetchBookmarks() {
+    const result = await storageGet(BOOKMARKS_KEY);
+    return result[BOOKMARKS_KEY] || [];
+  }
+  function normalizeForSearch(bookmarks) {
+    for (const b of bookmarks) {
+      b._title_lc = normalizeStr(b.videoTitle || '');
+      b._notes_lc = normalizeStr(b.notes || '');
+      b._tags_lc = normalizeStr((b.tags || []).join(' '));
+    }
+    return bookmarks;
+  }
   async function loadAllData() {
     try {
-      // Get settings
-      const settingResult = await storageGet([
-        'shortcutEnabled',
-        'darkModeEnabled',
-        'expandedGroups',
-        'firstRunDismissedV1',
-      ]);
-      if (shortcutToggle)
-        shortcutToggle.checked = settingResult.shortcutEnabled !== false;
-      const darkValue = settingResult.darkModeEnabled || false;
-      if (darkModeToggle) darkModeToggle.checked = darkValue;
-      applyTheme(darkValue);
-      expandedGroups = new Set(settingResult.expandedGroups || []);
-
-      // Apply theme (handled above)
-
-      // Get bookmarks using the new direct storage approach
-      const result = await storageGet(BOOKMARKS_KEY);
-      const bookmarks = result[BOOKMARKS_KEY] || [];
-
-      // Precompute normalized fields for search (diacritic-insensitive)
-      for (const b of bookmarks) {
-        b._title_lc = normalizeStr(b.videoTitle || '');
-        b._notes_lc = normalizeStr(b.notes || '');
-        b._tags_lc = normalizeStr((b.tags || []).join(' '));
-      }
-      allBookmarks = bookmarks;
+      const settings = await fetchSettings();
+      applySettingsToUI(settings);
+      allBookmarks = normalizeForSearch(await fetchBookmarks());
       updateFavoritesButtonLabel();
       renderTagChips();
-
-      // Update UI
       loadingState.style.display = 'none';
-      sortAndRenderBookmarks(); // Sort and render the bookmarks
-
-      // First run panel when no bookmarks and not dismissed
+      sortAndRenderBookmarks();
       try {
         const none = (allBookmarks || []).length === 0;
-        const dismissed = settingResult.firstRunDismissedV1 === true;
+        const dismissed = settings.firstRunDismissedV1 === true;
         if (firstRun)
           firstRun.style.display = none && !dismissed ? 'block' : 'none';
       } catch {}
-    } catch (_error) {
+    } catch {
       loadingState.style.display = 'none';
       emptyState.textContent = 'Error loading bookmarks. Please try again.';
       emptyState.style.display = 'block';
@@ -365,7 +369,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!shortcutModal) return;
     shortcutModal.classList.remove('show');
     shortcutModal.setAttribute('aria-hidden', 'true');
-    if (lastFocusEl && lastFocusEl.focus) lastFocusEl.focus();
+    if (lastFocusEl?.focus) lastFocusEl.focus();
     document.body.classList.remove('modal-open');
     try {
       disableFocusTrap(shortcutModal);
@@ -373,7 +377,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   shortcutModalClose?.addEventListener('click', () => closeShortcutHelp());
   shortcutModal?.addEventListener('click', (e) => {
-    if (e.target && e.target.classList?.contains('modal-backdrop')) {
+    if (e.target?.classList?.contains('modal-backdrop')) {
       closeShortcutHelp();
     }
   });
@@ -780,23 +784,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const searchTerm = normalizeStr(searchInput.value);
 
-    // Filter bookmarks
-    filteredBookmarks = allBookmarks.filter((bookmark) => {
+    /* biome-ignore lint/complexity/noExcessiveCognitiveComplexity: compact multi-check predicate */
+    function matchesFilters(bookmark, q) {
       if (favoritesOnly && !bookmark.favorite) return false;
-      // tags filter: require all active tag filters to be present
       if (activeTagFilters.size > 0) {
         const tags = new Set(
           (bookmark.tags || []).map((t) => String(t).toLowerCase())
         );
-        for (const t of activeTagFilters) {
-          if (!tags.has(t)) return false;
-        }
+        for (const t of activeTagFilters) if (!tags.has(t)) return false;
       }
-      const hay = `${bookmark._title_lc || ''} ${bookmark._notes_lc || ''} ${
-        bookmark._tags_lc || ''
-      }`;
-      return hay.includes(searchTerm);
-    });
+      if (!q) return true;
+      const hay = `${bookmark._title_lc || ''} ${bookmark._notes_lc || ''} ${bookmark._tags_lc || ''}`;
+      return hay.includes(q);
+    }
+
+    // Filter bookmarks
+    filteredBookmarks = allBookmarks.filter((bookmark) =>
+      matchesFilters(bookmark, searchTerm)
+    );
 
     // Reset pagination when filter changes
     currentPage = 0;
@@ -976,43 +981,42 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  function renderTagChips() {
-    if (!tagChipsContainer) return;
-    // Aggregate tag counts from all bookmarks
+  function aggregateTagCounts(bookmarks) {
     const counts = new Map();
-    for (const b of allBookmarks) {
+    for (const b of bookmarks)
       for (const t of b.tags || []) {
         const key = String(t).toLowerCase();
         counts.set(key, (counts.get(key) || 0) + 1);
       }
-    }
-    // Render top tags by frequency
+    return counts;
+  }
+  function makeTagChip(tag, count) {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = `tag-chip${activeTagFilters.has(tag) ? ' active' : ''}`;
+    chip.dataset.tag = tag;
+    chip.setAttribute(
+      'aria-pressed',
+      activeTagFilters.has(tag) ? 'true' : 'false'
+    );
+    chip.title = `Filter by tag: ${tag}`;
+    chip.innerHTML = `<span class="hash">#</span>${tag}<span class="count">${count}</span>`;
+    chip.addEventListener('click', () => {
+      if (activeTagFilters.has(tag)) activeTagFilters.delete(tag);
+      else activeTagFilters.add(tag);
+      renderTagChips();
+      sortAndRenderBookmarks();
+      updateClearFiltersVisibility();
+    });
+    return chip;
+  }
+  function renderTagChips() {
+    if (!tagChipsContainer) return;
+    const counts = aggregateTagCounts(allBookmarks);
     const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 20);
     tagChipsContainer.innerHTML = '';
-    for (const [tag, count] of top) {
-      const chip = document.createElement('button');
-      chip.type = 'button';
-      chip.className =
-        'tag-chip' + (activeTagFilters.has(tag) ? ' active' : '');
-      chip.dataset.tag = tag;
-      chip.setAttribute(
-        'aria-pressed',
-        activeTagFilters.has(tag) ? 'true' : 'false'
-      );
-      chip.title = `Filter by tag: ${tag}`;
-      chip.innerHTML = `<span class="hash">#</span>${tag}<span class="count">${count}</span>`;
-      chip.addEventListener('click', () => {
-        if (activeTagFilters.has(tag)) {
-          activeTagFilters.delete(tag);
-        } else {
-          activeTagFilters.add(tag);
-        }
-        renderTagChips();
-        sortAndRenderBookmarks();
-        updateClearFiltersVisibility();
-      });
-      tagChipsContainer.appendChild(chip);
-    }
+    for (const [tag, count] of top)
+      tagChipsContainer.appendChild(makeTagChip(tag, count));
     tagChipsContainer.style.display = top.length ? 'flex' : 'none';
   }
 
@@ -1179,7 +1183,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     // Observe for lazy loading only when using data-src
     try {
-      if (thumbnailImg.dataset && thumbnailImg.dataset.src) {
+      if (thumbnailImg.dataset?.src) {
         lazyObserver.observe(thumbnailImg);
       }
     } catch {}
@@ -1216,6 +1220,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const favBtn = div.querySelector('.favorite-btn');
+    /* biome-ignore lint/complexity/noExcessiveCognitiveComplexity: inline UI flow for favorite toggle */
     favBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
       e.preventDefault();
@@ -1279,6 +1284,7 @@ document.addEventListener('DOMContentLoaded', () => {
   );
 
   // Prevent global key handlers when editing tags, and add Enter to blur
+  /* biome-ignore lint/complexity/noExcessiveCognitiveComplexity: tag editing handler covers several cases */
   bookmarksList.addEventListener('keydown', (e) => {
     if (e.target?.classList?.contains('tag-input')) {
       if (e.key === 'Enter') {
@@ -1558,77 +1564,75 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Global keyboard event listener
-  document.addEventListener('keydown', (e) => {
-    // Only handle if search input or textarea is not focused
-    if (
-      document.activeElement === searchInput ||
-      document.activeElement.tagName === 'TEXTAREA' ||
-      document.activeElement?.tagName === 'INPUT' ||
-      document.activeElement?.classList?.contains('tag-input')
-    )
-      return;
-
-    const cards = bookmarkCards();
-    if (cards.length === 0) return;
-
-    // Simple key chord for group actions: 'g' then 'e'/'c'
+  function isInteractive(el) {
+    return (
+      el === searchInput ||
+      el?.tagName === 'TEXTAREA' ||
+      el?.tagName === 'INPUT' ||
+      el?.classList?.contains('tag-input')
+    );
+  }
+  /* biome-ignore lint/complexity/noExcessiveCognitiveComplexity: small key-chord state machine */
+  function handleChord(e) {
     window.__chord = window.__chord || { active: false, t: 0 };
     const now = Date.now();
-    if (window.__chord.active && now - window.__chord.t > 1500) {
-      window.__chord.active = false; // timeout
-    }
+    if (window.__chord.active && now - window.__chord.t > 1500)
+      window.__chord.active = false;
     if (!window.__chord.active && (e.key === 'g' || e.key === 'G')) {
       window.__chord = { active: true, t: now };
       e.preventDefault();
-      return;
-    } else if (window.__chord.active && (e.key === 'e' || e.key === 'E')) {
+      return true;
+    }
+    if (window.__chord.active && (e.key === 'e' || e.key === 'E')) {
       e.preventDefault();
       window.__chord.active = false;
       expandAllGroups();
-      return;
-    } else if (window.__chord.active && (e.key === 'c' || e.key === 'C')) {
+      return true;
+    }
+    if (window.__chord.active && (e.key === 'c' || e.key === 'C')) {
       e.preventDefault();
       window.__chord.active = false;
       collapseAllGroups();
-      return;
+      return true;
     }
-
+    return false;
+  }
+  function handleListKeys(e) {
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
         selectBookmark(selectedBookmarkIndex + 1);
-        break;
+        return true;
       case 'ArrowUp':
         e.preventDefault();
         selectBookmark(selectedBookmarkIndex - 1);
-        break;
+        return true;
       case 'Enter':
         e.preventDefault();
         openSelectedBookmark();
-        break;
+        return true;
       case 'Delete':
       case 'Backspace':
         e.preventDefault();
         deleteSelectedBookmark();
-        break;
+        return true;
       case 'Escape':
         e.preventDefault();
-        if (shortcutModal?.classList?.contains('show')) {
-          closeShortcutHelp();
-        } else {
+        if (shortcutModal?.classList?.contains('show')) closeShortcutHelp();
+        else {
           selectedBookmarkIndex = -1;
           updateSelection();
         }
-        break;
+        return true;
       case '/':
         e.preventDefault();
         if (e.shiftKey) openShortcutHelp();
         else searchInput.focus();
-        break;
+        return true;
       case '?':
         e.preventDefault();
         openShortcutHelp();
-        break;
+        return true;
       case 't':
       case 'T':
         e.preventDefault();
@@ -1637,13 +1641,20 @@ document.addEventListener('DOMContentLoaded', () => {
           const input = card?.querySelector('.tag-input');
           if (input) {
             input.focus();
-            // place cursor at end
             const val = input.value;
             input.setSelectionRange(val.length, val.length);
           }
         }
-        break;
+        return true;
+      default:
+        return false;
     }
+  }
+  document.addEventListener('keydown', (e) => {
+    if (isInteractive(document.activeElement)) return;
+    if (bookmarkCards().length === 0) return;
+    if (handleChord(e)) return;
+    handleListKeys(e);
   });
 
   // Reset selection when bookmarks change

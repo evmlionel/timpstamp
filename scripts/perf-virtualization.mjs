@@ -8,6 +8,7 @@ import { JSDOM } from 'jsdom';
 
 const datasetPath = process.argv[2] || 'sample-bookmarks.json';
 if (!fs.existsSync(datasetPath)) {
+  /* biome-ignore lint/suspicious/noConsole: CLI script feedback */
   console.error(
     `Dataset not found: ${datasetPath}\nGenerate with: bun run perf:gen > sample-bookmarks.json`
   );
@@ -30,6 +31,7 @@ for (const [vid, arr] of groups.entries()) {
     largest = { vid, items: arr };
 }
 if (!largest) {
+  /* biome-ignore lint/suspicious/noConsole: CLI script feedback */
   console.error('No groups in dataset.');
   process.exit(1);
 }
@@ -142,5 +144,7 @@ for (const overscan of [10, 20, 40]) {
   );
 }
 
+/* biome-ignore lint/suspicious/noConsole: CLI script output */
 console.log(`Largest group: ${N} items (of ${bookmarks.length} total)`);
+/* biome-ignore lint/suspicious/noConsole: CLI script output */
 for (const r of results) console.log(`${r.label}: ${r.ms}ms, nodes=${r.nodes}`);

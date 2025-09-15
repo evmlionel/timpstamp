@@ -827,46 +827,59 @@ try {
   });
 
   // Alt+[ / Alt+] navigation across saved timestamps
+  function isAltBracket(e) {
+    return (
+      !e.ctrlKey &&
+      !e.metaKey &&
+      e.altKey &&
+      !e.shiftKey &&
+      (e.key === '[' || e.key === ']')
+    );
+  }
+  function isTypingTarget(target) {
+    return (
+      !!target &&
+      (target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.isContentEditable)
+    );
+  }
+  function sortedTimes() {
+    return (cachedVideoTimestamps || [])
+      .map((b) => b.timestamp)
+      .sort((a, b) => a - b);
+  }
+  function findPrev(times, now) {
+    let prev = null;
+    for (const t of times) {
+      if (t < now) prev = t;
+      else break;
+    }
+    return prev;
+  }
+  function findNext(times, now) {
+    for (const t of times) if (t > now) return t;
+    return null;
+  }
   function handleAltBracketNavigation(e) {
     try {
       if (!overlayEnabled) return;
-      if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
-      if (
-        e.target &&
-        (e.target.tagName === 'INPUT' ||
-          e.target.tagName === 'TEXTAREA' ||
-          e.target.isContentEditable)
-      )
-        return;
-      if (e.key !== '[' && e.key !== ']') return;
-
+      if (!isAltBracket(e)) return;
+      if (isTypingTarget(e.target)) return;
       const video = findVideoElement();
       if (!video || !currentVideoId) return;
       const now = Math.floor(video.currentTime || 0);
-      const times = (cachedVideoTimestamps || [])
-        .map((b) => b.timestamp)
-        .sort((a, b) => a - b);
+      const times = sortedTimes();
       if (times.length === 0) return;
-
       if (e.key === '[') {
-        let prev = null;
-        for (const t of times) {
-          if (t < now) prev = t;
-          else break;
-        }
+        const prev = findPrev(times, now);
         if (prev != null) {
           video.currentTime = prev;
           showNotification(`Jumped to ${fmt(prev)}`);
           e.preventDefault();
         }
-      } else if (e.key === ']') {
-        let next = null;
-        for (const t of times) {
-          if (t > now) {
-            next = t;
-            break;
-          }
-        }
+      } else {
+        const next = findNext(times, now);
         if (next != null) {
           video.currentTime = next;
           showNotification(`Jumped to ${fmt(next)}`);
