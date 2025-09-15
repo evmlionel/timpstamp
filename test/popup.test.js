@@ -572,9 +572,15 @@ describe('Popup Script', () => {
       const favBtn = document.createElement('button');
       favBtn.className = 'favorite-btn';
       favBtn.setAttribute('aria-pressed', 'false');
-      const starFilled = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      const starFilled = document.createElementNS(
+        'http://www.w3.org/2000/svg',
+        'svg'
+      );
       starFilled.classList.add('star-filled');
-      const starOutline = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      const starOutline = document.createElementNS(
+        'http://www.w3.org/2000/svg',
+        'svg'
+      );
       starOutline.classList.add('star-outline');
       favBtn.appendChild(starOutline);
       favBtn.appendChild(starFilled);
@@ -600,9 +606,7 @@ describe('Popup Script', () => {
       input.value = '';
       input.dataset.bookmarkId = 'id1';
 
-      const allBookmarks = [
-        { id: 'id1', tags: ['one', 'two', 'three'] },
-      ];
+      const allBookmarks = [{ id: 'id1', tags: ['one', 'two', 'three'] }];
 
       const saveTagsToBookmark = async (bookmarkId, tags) => {
         const b = allBookmarks.find((x) => x.id === bookmarkId);
@@ -612,12 +616,18 @@ describe('Popup Script', () => {
       // Simulate handler logic
       const onKeyDown = async (e) => {
         const isComposing = false;
-        if (e.key === 'Backspace' && !isComposing && String(input.value || '').trim() === '') {
+        if (
+          e.key === 'Backspace' &&
+          !isComposing &&
+          String(input.value || '').trim() === ''
+        ) {
           e.preventDefault();
           const bookmarkId = input.dataset.bookmarkId;
           const i = allBookmarks.findIndex((b) => b.id === bookmarkId);
           if (i !== -1) {
-            const current = Array.isArray(allBookmarks[i].tags) ? [...allBookmarks[i].tags] : [];
+            const current = Array.isArray(allBookmarks[i].tags)
+              ? [...allBookmarks[i].tags]
+              : [];
             if (current.length > 0) {
               current.pop();
               await saveTagsToBookmark(bookmarkId, current);

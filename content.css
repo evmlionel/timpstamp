@@ -49,7 +49,8 @@
   border-radius: 6px;
   padding: 8px;
   z-index: 10000;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   width: 240px;
 }
 .ytb-overlay-header {

@@ -10,7 +10,7 @@ function storageGet(keys) {
   return new Promise((resolve, reject) => {
     try {
       chrome.storage.local.get(keys, (result) => {
-        if (chrome.runtime && chrome.runtime.lastError) {
+        if (chrome.runtime?.lastError) {
           reject(chrome.runtime.lastError);
         } else {
           resolve(result || {});
@@ -26,7 +26,7 @@ function storageSet(obj) {
   return new Promise((resolve, reject) => {
     try {
       chrome.storage.local.set(obj, () => {
-        if (chrome.runtime && chrome.runtime.lastError) {
+        if (chrome.runtime?.lastError) {
           reject(chrome.runtime.lastError);
         } else {
           resolve();
@@ -258,7 +258,7 @@ document.addEventListener('DOMContentLoaded', () => {
       allBookmarks = bookmarks;
       updateFavoritesButtonLabel();
       renderTagChips();
-      
+
       // Update UI
       loadingState.style.display = 'none';
       sortAndRenderBookmarks(); // Sort and render the bookmarks
@@ -267,7 +267,8 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         const none = (allBookmarks || []).length === 0;
         const dismissed = settingResult.firstRunDismissedV1 === true;
-        if (firstRun) firstRun.style.display = none && !dismissed ? 'block' : 'none';
+        if (firstRun)
+          firstRun.style.display = none && !dismissed ? 'block' : 'none';
       } catch {}
     } catch (_error) {
       loadingState.style.display = 'none';
@@ -355,7 +356,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // Focus close button
     shortcutModalClose?.focus();
     document.body.classList.add('modal-open');
-    try { enableFocusTrap(shortcutModal); } catch {}
+    try {
+      enableFocusTrap(shortcutModal);
+    } catch {}
   }
   function closeShortcutHelp() {
     if (!shortcutModal) return;
@@ -363,7 +366,9 @@ document.addEventListener('DOMContentLoaded', () => {
     shortcutModal.setAttribute('aria-hidden', 'true');
     if (lastFocusEl && lastFocusEl.focus) lastFocusEl.focus();
     document.body.classList.remove('modal-open');
-    try { disableFocusTrap(shortcutModal); } catch {}
+    try {
+      disableFocusTrap(shortcutModal);
+    } catch {}
   }
   shortcutModalClose?.addEventListener('click', () => closeShortcutHelp());
   shortcutModal?.addEventListener('click', (e) => {
@@ -384,11 +389,17 @@ document.addEventListener('DOMContentLoaded', () => {
   function getFocusableElements(container) {
     const dialog = container.querySelector('.modal-dialog') || container;
     const selectors = [
-      'a[href]','button:not([disabled])','input:not([disabled])','select:not([disabled])',
-      'textarea:not([disabled])','[tabindex]:not([tabindex="-1"])'
+      'a[href]',
+      'button:not([disabled])',
+      'input:not([disabled])',
+      'select:not([disabled])',
+      'textarea:not([disabled])',
+      '[tabindex]:not([tabindex="-1"])',
     ].join(',');
     const nodes = Array.from(dialog.querySelectorAll(selectors));
-    return nodes.filter((el) => el.offsetParent !== null || el === document.activeElement);
+    return nodes.filter(
+      (el) => el.offsetParent !== null || el === document.activeElement
+    );
   }
   function handleTrapKeydown(e) {
     if (e.key !== 'Tab') return;
@@ -439,12 +450,16 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       // Use current filtered view if available
       const videos = new Set();
-      for (const b of filteredBookmarks.length ? filteredBookmarks : allBookmarks) {
+      for (const b of filteredBookmarks.length
+        ? filteredBookmarks
+        : allBookmarks) {
         if (b.videoId) videos.add(b.videoId);
       }
       const v = videos.size;
-      const t = (filteredBookmarks.length ? filteredBookmarks : allBookmarks).length;
-      if (headerCounts) headerCounts.textContent = `${v} videos · ${t} timestamps`;
+      const t = (filteredBookmarks.length ? filteredBookmarks : allBookmarks)
+        .length;
+      if (headerCounts)
+        headerCounts.textContent = `${v} videos · ${t} timestamps`;
     } catch {}
   }
 
@@ -498,9 +513,9 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.group-card .group-body').forEach((el) => {
         el.style.display = 'block';
       });
-      document.querySelectorAll('.group-card .group-header').forEach((h) =>
-        h.setAttribute('aria-expanded', 'true')
-      );
+      document.querySelectorAll('.group-card .group-header').forEach((h) => {
+        h.setAttribute('aria-expanded', 'true');
+      });
       await storageSet({ expandedGroups: [...expandedGroups] });
     } catch {}
   }
@@ -510,9 +525,9 @@ document.addEventListener('DOMContentLoaded', () => {
       document.querySelectorAll('.group-card .group-body').forEach((el) => {
         el.style.display = 'none';
       });
-      document.querySelectorAll('.group-card .group-header').forEach((h) =>
-        h.setAttribute('aria-expanded', 'false')
-      );
+      document.querySelectorAll('.group-card .group-header').forEach((h) => {
+        h.setAttribute('aria-expanded', 'false');
+      });
       await storageSet({ expandedGroups: [] });
     } catch {}
   }
@@ -821,8 +836,12 @@ document.addEventListener('DOMContentLoaded', () => {
     groupsOrdered = [...groups.entries()].sort((a, b) => {
       const A = a[1];
       const B = b[1];
-      const aMax = Math.max(...A.items.map((x) => x.savedAt || x.createdAt || 0));
-      const bMax = Math.max(...B.items.map((x) => x.savedAt || x.createdAt || 0));
+      const aMax = Math.max(
+        ...A.items.map((x) => x.savedAt || x.createdAt || 0)
+      );
+      const bMax = Math.max(
+        ...B.items.map((x) => x.savedAt || x.createdAt || 0)
+      );
       return bMax - aMax;
     });
 
@@ -1185,7 +1204,8 @@ document.addEventListener('DOMContentLoaded', () => {
       e.preventDefault();
       try {
         const url = `https://youtube.com/watch?v=${bookmark.videoId}&t=${bookmark.timestamp}s`;
-        const md = `[${bookmark.videoTitle || 'YouTube'} ${formatTime(bookmark.timestamp)}](${url})` +
+        const md =
+          `[${bookmark.videoTitle || 'YouTube'} ${formatTime(bookmark.timestamp)}](${url})` +
           (bookmark.notes ? ` — ${bookmark.notes}` : '');
         await navigator.clipboard.writeText(md);
         showNotification('Markdown copied!', 'success', notificationArea);
@@ -1214,7 +1234,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const idx = allBookmarks.findIndex((b) => b.id === id);
       if (idx >= 0) allBookmarks[idx].favorite = toggled;
       // Instant visual + feedback
-      try { updateFavoritesButtonLabel(); } catch {}
+      try {
+        updateFavoritesButtonLabel();
+      } catch {}
       showNotification(
         toggled ? 'Added to favorites' : 'Removed from favorites',
         'success',

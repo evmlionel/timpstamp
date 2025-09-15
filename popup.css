@@ -130,9 +130,17 @@ h2 {
   color: #6b7280;
   font-size: 12px;
 }
-.header-meta { gap: 8px; align-items: center; }
-.header-meta #headerCounts { white-space: nowrap; }
-.header-actions { display: flex; gap: 8px; }
+.header-meta {
+  gap: 8px;
+  align-items: center;
+}
+.header-meta #headerCounts {
+  white-space: nowrap;
+}
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
 .meta-btn {
   border: 1px solid #e5e7eb;
   background: #f9fafb;
@@ -142,12 +150,20 @@ h2 {
   font-size: 12px;
   cursor: pointer;
 }
-.meta-btn:focus { outline: 2px solid var(--focus, #2563eb); outline-offset: 2px; }
+.meta-btn:focus {
+  outline: 2px solid var(--focus, #2563eb);
+  outline-offset: 2px;
+}
 
 /* Prevent background scroll when modal is open */
-body.modal-open { overflow: hidden; }
+body.modal-open {
+  overflow: hidden;
+}
 
-.header-actions { display: flex; gap: 8px; }
+.header-actions {
+  display: flex;
+  gap: 8px;
+}
 .meta-btn {
   border: 1px solid #e5e7eb;
   background: #f9fafb;
@@ -157,7 +173,10 @@ body.modal-open { overflow: hidden; }
   font-size: 12px;
   cursor: pointer;
 }
-.meta-btn:focus { outline: 2px solid var(--focus, #2563eb); outline-offset: 2px; }
+.meta-btn:focus {
+  outline: 2px solid var(--focus, #2563eb);
+  outline-offset: 2px;
+}
 
 .shortcut-btn,
 .favorites-btn,
@@ -233,12 +252,16 @@ body.modal-open { overflow: hidden; }
 }
 
 /* Modal (shortcuts) */
-.modal { display: none; }
-.modal.show { display: block; }
+.modal {
+  display: none;
+}
+.modal.show {
+  display: block;
+}
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.4);
+  background: rgba(0, 0, 0, 0.4);
 }
 .modal-dialog {
   position: fixed;
@@ -251,7 +274,7 @@ body.modal-open { overflow: hidden; }
   color: var(--text, #111827);
   border: 1px solid var(--border, #e5e7eb);
   border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
   z-index: 1000;
 }
 .modal-header {
@@ -261,7 +284,10 @@ body.modal-open { overflow: hidden; }
   padding: 8px 10px 6px;
   border-bottom: 1px solid var(--border, #e5e7eb);
 }
-.modal-header h2 { font-size: 15px; margin: 0; }
+.modal-header h2 {
+  font-size: 15px;
+  margin: 0;
+}
 .modal-close {
   border: none;
   background: transparent;
@@ -269,9 +295,16 @@ body.modal-open { overflow: hidden; }
   line-height: 1;
   cursor: pointer;
 }
-.modal-body { padding: 8px 10px 10px; }
-.shortcut-list { margin: 0; padding-left: 18px; }
-.shortcut-list li { margin: 6px 0; }
+.modal-body {
+  padding: 8px 10px 10px;
+}
+.shortcut-list {
+  margin: 0;
+  padding-left: 18px;
+}
+.shortcut-list li {
+  margin: 6px 0;
+}
 .shortcut-list kbd {
   display: inline-block;
   min-width: 1.2em;
@@ -295,10 +328,15 @@ body.modal-open { overflow: hidden; }
   color: var(--text, #111827);
   border: 1px solid var(--border, #e5e7eb);
   border-radius: 12px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
 }
-.first-run-inner { padding: 12px; }
-.first-run ol { margin: 8px 0 12px; padding-left: 20px; }
+.first-run-inner {
+  padding: 12px;
+}
+.first-run ol {
+  margin: 8px 0 12px;
+  padding-left: 20px;
+}
 .first-run-dismiss {
   border: 1px solid #e5e7eb;
   background: #f9fafb;

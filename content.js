@@ -1,3 +1,4 @@
+const BOOKMARKS_KEY = 'timpstamp_bookmarks';
 let currentVideoId = null;
 let shortcutEnabled = true; // Default to enabled, will be updated from storage
 let cachedVideoTimestamps = [];
@@ -519,8 +520,8 @@ function renderOverlay() {
 async function loadVideoTimestamps() {
   try {
     if (!currentVideoId) return;
-    const res = await chrome.storage.local.get('timpstamp_bookmarks');
-    const all = res.timpstamp_bookmarks || [];
+    const res = await chrome.storage.local.get(BOOKMARKS_KEY);
+    const all = res[BOOKMARKS_KEY] || [];
     cachedVideoTimestamps = all.filter((b) => b.videoId === currentVideoId);
     renderOverlay();
   } catch {}
@@ -531,7 +532,9 @@ function announceToScreenReader(message) {
   try {
     // Remove existing announcements
     const existing = document.querySelectorAll('.ytb-sr-announcement');
-    existing.forEach((el) => el.remove());
+    existing.forEach((el) => {
+      el.remove();
+    });
 
     // Create new announcement
     const announcement = document.createElement('div');

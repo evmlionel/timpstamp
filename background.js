@@ -1,5 +1,6 @@
 // Constants for storage
-const BOOKMARKS_KEY = 'timpstamp_bookmarks'; // Single key for all bookmarks
+import { BOOKMARKS_KEY } from './src/constants.js';
+
 const SETTINGS_KEYS = [
   'shortcutEnabled',
   'darkModeEnabled',
@@ -333,21 +334,7 @@ async function handleUpdateBookmarkNotes(bookmarkId, notes, sendResponse) {
   }
 }
 
-// Cleanup old bookmarks to free up storage space
-async function _cleanupOldBookmarks(bookmarks) {
-  if (bookmarks.length <= 50) {
-    return bookmarks;
-  }
-
-  // Sort by savedAt timestamp (newest first) and keep only the 50 most recent
-  const sortedBookmarks = [...bookmarks].sort((a, b) => {
-    const aTime = a.savedAt || a.createdAt || 0;
-    const bTime = b.savedAt || b.createdAt || 0;
-    return bTime - aTime;
-  });
-
-  return sortedBookmarks.slice(0, 50);
-}
+// (removed) _cleanupOldBookmarks was unused; keep quota-aware trimming in checkAndCleanupStorage
 
 // Enhanced error handling for storage operations
 function handleStorageError(error, _operation) {
@@ -368,13 +355,16 @@ function handleStorageError(error, _operation) {
 
 // Handle service worker lifecycle with error handling
 self.addEventListener('activate', (event) => {
-  event.waitUntil(async () => {
-    try {
-      // Take control of all clients
-      await clients.claim();
+  // waitUntil expects a Promise; pass the IIFE result, not the function
+  event.waitUntil(
+    (async () => {
+      try {
+        // Take control of all clients
+        await clients.claim();
 
-      // Perform initial data validation on activation
-      await getAllBookmarks();
-    } catch (_error) {}
-  });
+        // Perform initial data validation on activation
+        await getAllBookmarks();
+      } catch (_error) {}
+    })()
+  );
 });
