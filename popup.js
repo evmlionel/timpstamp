@@ -1135,6 +1135,9 @@ document.addEventListener('DOMContentLoaded', () => {
     div.className = 'bookmark-card';
     div.setAttribute('role', 'listitem');
     const bookmarkId = bookmark.id;
+    const tagValue = Array.isArray(bookmark.tags)
+      ? bookmark.tags.join(', ')
+      : '';
 
     div.dataset.bookmarkId = bookmarkId;
 
@@ -1177,7 +1180,7 @@ document.addEventListener('DOMContentLoaded', () => {
               </button>
           </div>
       </div>
-      <input class="tag-input" type="text" placeholder="tags (comma-separated)" value="${(bookmark.tags || []).join(', ')}" data-bookmark-id="${bookmarkId}" />
+      <input class="tag-input" type="text" placeholder="Add tags · press Enter" value="${tagValue}" data-bookmark-id="${bookmarkId}" />
     </div>
   `;
 

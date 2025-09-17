@@ -12,32 +12,32 @@
     
     <div class="header">
       <div class="header-top">
-        <h1 id="main-title" role="button" tabindex="0" title="Reset search and filters">YouTube Timestamps</h1>
+        <div class="header-overview">
+          <h1 id="main-title" role="button" tabindex="0" title="Reset search and filters">YouTube Timestamps</h1>
+          <span id="headerCounts" class="header-counts" aria-live="polite"></span>
+        </div>
         <div class="header-controls">
-          <div class="header-controls-left">
-            <select id="sortSelect" class="sort-select" title="Sort bookmarks" aria-label="Sort bookmarks by">
+          <select id="sortSelect" class="sort-select" title="Sort bookmarks" aria-label="Sort bookmarks by">
             <option value="newest">Sort: Newest</option>
             <option value="oldest">Sort: Oldest</option>
             <option value="title">Sort: Title (A-Z)</option>
           </select>
-          <button id="selectModeBtn" class="select-mode-btn" title="Select multiple bookmarks" aria-label="Enter selection mode to manage multiple bookmarks">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M7,5H17A2,2 0 0,1 19,7V17A2,2 0 0,1 17,19H7A2,2 0 0,1 5,17V7A2,2 0 0,1 7,5M7,3A4,4 0 0,0 3,7V17A4,4 0 0,0 7,21H17A4,4 0 0,0 21,17V7A4,4 0 0,0 17,3H7Z" />
-            </svg>
-          </button>
-          <button id="exportBtn" class="export-btn" title="Export bookmarks" aria-label="Export all bookmarks to JSON file">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M9,16V10H5L12,3L19,10H15V16H9M5,20V18H19V20H5Z" />
-            </svg>
-          </button>
-          <button id="importBtn" class="import-btn" title="Import bookmarks" aria-label="Import bookmarks from JSON file">
-            <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-              <path d="M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z" />
-            </svg>
-          </button>
-          <input type="file" id="importFile" accept=".json" style="display: none;" aria-label="Select JSON file to import" />
-          </div>
-          <div class="header-controls-right">
+          <div class="header-icon-grid" role="group" aria-label="Quick actions">
+            <button id="selectModeBtn" class="select-mode-btn" title="Select multiple bookmarks" aria-label="Enter selection mode to manage multiple bookmarks">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M7,5H17A2,2 0 0,1 19,7V17A2,2 0 0,1 17,19H7A2,2 0 0,1 5,17V7A2,2 0 0,1 7,5M7,3A4,4 0 0,0 3,7V17A4,4 0 0,0 7,21H17A4,4 0 0,0 21,17V7A4,4 0 0,0 17,3H7Z" />
+              </svg>
+            </button>
+            <button id="exportBtn" class="export-btn" title="Export bookmarks" aria-label="Export all bookmarks to JSON file">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M9,16V10H5L12,3L19,10H15V16H9M5,20V18H19V20H5Z" />
+              </svg>
+            </button>
+            <button id="importBtn" class="import-btn" title="Import bookmarks" aria-label="Import bookmarks from JSON file">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M5,20H19V18H5M19,9H15V3H9V9H5L12,16L19,9Z" />
+              </svg>
+            </button>
             <button id="favoritesFilterBtn" class="favorites-btn" title="Show favorites only" aria-pressed="false" aria-label="Toggle favorites filter">
               <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
                 <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
@@ -48,8 +48,13 @@
                 <path d="M12,8A4,4 0 1,1 8,12A4,4 0 0,1 12,8M3,13H5.08A7,7 0 0,0 6,15.65L4.5,17.16L6.84,19.5L8.35,18A7,7 0 0,0 11,18.92V21H13V18.92A7,7 0 0,0 15.65,18L17.16,19.5L19.5,17.16L18,15.65A7,7 0 0,0 18.92,13H21V11H18.92A7,7 0 0,0 18,8.35L19.5,6.84L17.16,4.5L15.65,6A7,7 0 0,0 13,5.08V3H11V5.08A7,7 0 0,0 8.35,6L6.84,4.5L4.5,6.84L6,8.35A7,7 0 0,0 5.08,11H3V13Z"/>
               </svg>
             </button>
-            <button id="shortcutBtn" class="shortcut-btn" title="Keyboard shortcuts (?)" aria-label="Open keyboard shortcuts">?</button>
+            <button id="shortcutBtn" class="shortcut-btn" title="Keyboard shortcuts" aria-label="Open keyboard shortcuts">
+              <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M11 17h2v2h-2zm0-12h2v8h-2zm1-5C5.93 0 1 4.93 1 11s4.93 11 11 11 11-4.93 11-11S18.07 0 12 0zm0 20c-4.96 0-9-4.04-9-9s4.04-9 9-9 9 4.04 9 9-4.04 9-9 9z"/>
+              </svg>
+            </button>
           </div>
+          <input type="file" id="importFile" accept=".json" style="display: none;" aria-label="Select JSON file to import" />
         </div>
       </div>
       <div class="header-meta">
@@ -57,7 +62,6 @@
           <button id="expandAllBtn" class="meta-btn" aria-label="Expand all groups" title="Expand all groups">Expand all</button>
           <button id="collapseAllBtn" class="meta-btn" aria-label="Collapse all groups" title="Collapse all groups">Collapse all</button>
         </div>
-        <span id="headerCounts" aria-live="polite"></span>
       </div>
       <!-- Settings toggles moved to Options page to declutter popup -->
       <div id="bulkActions" class="bulk-actions" style="display: none;" role="toolbar" aria-label="Bulk actions for selected bookmarks">
